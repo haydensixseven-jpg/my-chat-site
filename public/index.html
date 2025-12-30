@@ -1,31 +1,77 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Who's Online?</title>
+    <title>Member Chat</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px; background: #f4f4f9; }
-        .container { background: white; padding: 20px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 300px; }
-        #user-list { list-style: none; padding: 0; font-size: 1.2rem; }
-        .user-card { margin: 10px; color: #2ecc71; font-weight: bold; border-bottom: 1px solid #eee; padding: 5px; }
+        body { font-family: sans-serif; display: flex; justify-content: center; background: #f0f2f5; }
+        #auth-container, #chat-container { background: white; padding: 20px; border-radius: 8px; width: 350px; margin-top: 50px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        input { width: 90%; padding: 10px; margin: 5px 0; }
+        button { width: 100%; padding: 10px; cursor: pointer; background: #007bff; color: white; border: none; margin: 5px 0; }
+        #messages { height: 300px; overflow-y: auto; border: 1px solid #ddd; list-style: none; padding: 10px; margin: 10px 0; }
+        #user-list { font-size: 0.8em; color: green; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Global Online List</h1>
-        <p id="status">Connecting...</p>
-        <ul id="user-list"></ul>
+
+    <div id="auth-container">
+        <h2>Login / Signup</h2>
+        <input id="user-input" placeholder="Username">
+        <input id="pass-input" type="password" placeholder="Password">
+        <button onclick="auth('login')">Login</button>
+        <button style="background: #28a745" onclick="auth('signup')">Create Account</button>
     </div>
+
+    <div id="chat-container" class="hidden">
+        <div id="user-list">Online: </div>
+        <button onclick="location.reload()" style="background: #dc3545; width: auto; font-size: 10px; padding: 5px;">Logout</button>
+        <ul id="messages"></ul>
+        <input id="msg-input" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const userList = document.getElementById('user-list');
-        const username = prompt("Enter your username:") || "Guest_" + Math.floor(Math.random()*1000);
-        socket.emit('set-username', username);
-        document.getElementById('status').innerText = `Logged in as: ${username}`;
-        socket.on('update-user-list', (users) => {
-            userList.innerHTML = users.map(user => `<li class="user-card">● ${user}</li>`).join('');
+        let currentUser = "";
+
+        async function auth(type) {
+            const username = document.getElementById('user-input').value;
+            const password = document.getElementById('pass-input').value;
+            const res = await fetch('/auth', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, password, type })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (type === 'signup') alert("Account created! Now login.");
+                else {
+                    currentUser = username;
+                    document.getElementById('auth-container').classList.add('hidden');
+                    document.getElementById('chat-container').classList.remove('hidden');
+                    socket.emit('login', username);
+                }
+            } else alert(data.message);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            if (input.value) {
+                socket.emit('chat-message', input.value);
+                input.value = '';
+            }
+        }
+
+        socket.on('chat-message', d => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${d.user}:</strong> ${d.text}`;
+            document.getElementById('messages').appendChild(li);
+        });
+
+        socket.on('update-users', list => {
+            document.getElementById('user-list').innerText = "Online: " + list.join(', ');
         });
     </script>
 </body>
 </html>
-
