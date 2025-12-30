@@ -3,82 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect | Live</title>
+    <title>Connect | Minimal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at top left, #1e1b4b, #0f172a); height: 100vh; color: white; margin:0; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; height: 100vh; color: white; margin:0; overflow: hidden; }
         .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .input-gradient { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .message-bubble { max-width: 70%; padding: 0.75rem 1rem; border-radius: 1.25rem; margin-bottom: 0.5rem; word-wrap: break-word; }
-        .message-received { background: rgba(255, 255, 255, 0.07); border-bottom-left-radius: 0.25rem; }
-        .message-sent { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); align-self: flex-end; border-bottom-right-radius: 0.25rem; }
-        .sidebar-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .message-bubble { max-width: 80%; padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.25rem; word-wrap: break-word; }
+        .message-received { background: #1e293b; color: #cbd5e1; }
+        .message-sent { background: #4f46e5; color: white; align-self: flex-end; }
+        .sidebar-transition { transition: margin 0.3s ease-in-out; }
         .hidden { display: none !important; }
-        .fade-in { animation: fadeIn 0.3s ease forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="flex items-center justify-center">
 
-    <div id="auth-screen" class="w-full max-w-md p-4">
-        <div class="glass-panel rounded-3xl p-8 text-center">
-            <h1 class="text-3xl font-bold mb-6">Connect</h1>
+    <div id="auth-screen" class="w-full max-w-md p-6">
+        <div class="glass-panel rounded-3xl p-8">
+            <h1 class="text-3xl font-bold text-center mb-8">Connect</h1>
             <div id="loginForm" class="space-y-4">
-                <input type="email" id="li-email" placeholder="Email" class="input-gradient w-full px-4 py-3 rounded-xl text-white outline-none">
-                <input type="password" id="li-pass" placeholder="Password" class="input-gradient w-full px-4 py-3 rounded-xl text-white outline-none">
-                <button onclick="handleAuth('login')" class="w-full py-3 bg-indigo-600 rounded-xl font-bold">Sign In</button>
-                <p class="text-sm text-slate-400">No account? <button onclick="toggleF('signup')" class="text-indigo-400 underline">Sign Up</button></p>
+                <input type="email" id="li-email" placeholder="Email" class="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl outline-none focus:border-indigo-500">
+                <input type="password" id="li-pass" placeholder="Password" class="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl outline-none focus:border-indigo-500">
+                <button onclick="handleAuth('login')" class="w-full py-3 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition">Sign In</button>
+                <p class="text-center text-sm text-slate-400">New? <button onclick="toggleF('signup')" class="text-indigo-400 underline">Create account</button></p>
             </div>
             <div id="signupForm" class="hidden space-y-4">
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="su-first" placeholder="First" class="input-gradient px-4 py-3 rounded-xl outline-none">
-                    <input type="text" id="su-last" placeholder="Last" class="input-gradient px-4 py-3 rounded-xl outline-none">
+                    <input type="text" id="su-first" placeholder="First Name" class="bg-white/5 border border-white/10 px-4 py-3 rounded-xl outline-none">
+                    <input type="text" id="su-last" placeholder="Last Name" class="bg-white/5 border border-white/10 px-4 py-3 rounded-xl outline-none">
                 </div>
-                <input type="email" id="su-email" placeholder="Email" class="input-gradient w-full px-4 py-3 rounded-xl outline-none">
-                <input type="password" id="su-pass" placeholder="Password" class="input-gradient w-full px-4 py-3 rounded-xl outline-none">
-                <button onclick="handleAuth('signup')" class="w-full py-3 bg-indigo-600 rounded-xl font-bold">Create Account</button>
-                <p class="text-sm text-slate-400">Have account? <button onclick="toggleF('login')" class="text-indigo-400 underline">Login</button></p>
+                <input type="email" id="su-email" placeholder="Email" class="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl outline-none">
+                <input type="password" id="su-pass" placeholder="Password" class="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl outline-none">
+                <button onclick="handleAuth('signup')" class="w-full py-3 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition">Join Now</button>
+                <p class="text-center text-sm text-slate-400">Have account? <button onclick="toggleF('login')" class="text-indigo-400 underline">Login</button></p>
             </div>
         </div>
     </div>
 
-    <div id="app-screen" class="hidden w-full h-full flex overflow-hidden">
+    <div id="app-screen" class="hidden w-full h-full flex">
         
-        <aside id="sidebar" class="sidebar-transition w-72 h-full glass-panel flex flex-col border-r border-white/10 shrink-0">
-            <div class="p-6 flex items-center justify-between">
-                <h1 class="font-bold text-xl">Players</h1>
-                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white md:hidden">✕</button>
+        <aside id="sidebar" class="sidebar-transition w-64 h-full glass-panel flex flex-col border-r border-white/10">
+            <div class="p-6 flex justify-between items-center">
+                <h2 class="font-bold text-lg">Online</h2>
+                <button onclick="toggleSidebar()" class="text-slate-500 hover:text-white">✕</button>
             </div>
-            <div class="px-6 flex-1 overflow-y-auto custom-scrollbar">
-                <p id="online-count" class="text-xs font-bold text-slate-500 mb-4 uppercase">Online — 0</p>
-                <div id="user-list" class="space-y-4"></div>
-            </div>
-            <div class="p-4 bg-white/5 flex items-center gap-3">
-                <img id="my-pfp" class="w-10 h-10 rounded-full border border-indigo-500">
-                <div class="flex-1 truncate"><p id="my-name" class="text-sm font-bold truncate"></p></div>
-                <button onclick="logout()" class="text-xs text-slate-400 hover:text-red-400">Logout</button>
+            <div id="user-list" class="flex-1 px-6 space-y-3 overflow-y-auto"></div>
+            <div class="p-4 border-t border-white/10">
+                <p id="my-name" class="text-sm font-bold truncate"></p>
+                <button onclick="logout()" class="text-xs text-red-400 hover:underline">Logout</button>
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col h-full relative">
+        <main class="flex-1 flex flex-col h-full bg-slate-900/50">
             <header class="h-16 glass-panel px-6 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleSidebar()" class="p-2 hover:bg-white/10 rounded-lg">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="p-2 hover:bg-white/5 rounded-lg">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
-                    <h2 class="font-bold"># general</h2>
+                    <span class="font-bold"># global-chat</span>
                 </div>
-                <button onclick="clearChat()" class="text-xs bg-white/10 px-3 py-1 rounded-full hover:bg-white/20 transition">Clear My View</button>
+                <button onclick="requestGlobalClear()" class="text-xs font-bold text-red-400 bg-red-400/10 px-3 py-1.5 rounded-lg hover:bg-red-400/20 transition">CLEAR ALL CHAT</button>
             </header>
 
-            <div id="messageDisplay" class="flex-1 overflow-y-auto p-6 flex flex-col custom-scrollbar"></div>
+            <div id="messageDisplay" class="flex-1 overflow-y-auto p-6 flex flex-col"></div>
 
-            <div class="p-4">
-                <form onsubmit="sendMsg(event)" class="max-w-4xl mx-auto flex items-center gap-2 bg-white/5 border border-white/10 p-2 rounded-2xl">
-                    <input type="text" id="msg-in" placeholder="Type a message..." class="flex-1 bg-transparent outline-none px-3 py-2">
-                    <button type="submit" class="bg-indigo-600 p-2.5 rounded-xl hover:bg-indigo-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
+            <div class="p-4 bg-slate-900">
+                <form onsubmit="sendMsg(event)" class="max-w-4xl mx-auto flex gap-2 bg-white/5 border border-white/10 p-2 rounded-2xl">
+                    <input type="text" id="msg-in" placeholder="Message..." class="flex-1 bg-transparent outline-none px-3">
+                    <button type="submit" class="bg-indigo-600 px-4 py-2 rounded-xl font-bold">Send</button>
                 </form>
             </div>
         </main>
@@ -100,16 +93,18 @@
 
         function toggleSidebar() {
             const sb = document.getElementById('sidebar');
-            if (sb.style.marginLeft === "-288px") {
-                sb.style.marginLeft = "0px";
-            } else {
-                sb.style.marginLeft = "-288px";
+            sb.style.marginLeft = sb.style.marginLeft === "-256px" ? "0px" : "-256px";
+        }
+
+        function requestGlobalClear() {
+            if(confirm("This will delete the chat history for EVERYONE. Continue?")) {
+                socket.emit('request-clear-all');
             }
         }
 
-        function clearChat() {
-            document.getElementById('messageDisplay').innerHTML = '<div class="text-center text-slate-500 text-xs my-4">Chat cleared locally</div>';
-        }
+        socket.on('chat-cleared-globally', () => {
+            document.getElementById('messageDisplay').innerHTML = '<div class="text-center text-red-400 text-xs my-4 font-bold">CHAT HISTORY WAS WIPED BY AN ADMIN</div>';
+        });
 
         async function handleAuth(type) {
             const email = document.getElementById(type === 'login' ? 'li-email' : 'su-email').value;
@@ -134,7 +129,6 @@
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
             document.getElementById('my-name').innerText = myData.firstName + " " + myData.lastName;
-            document.getElementById('my-pfp').src = myData.profilePic;
             socket.emit('join-chat', myData);
         }
 
@@ -150,12 +144,9 @@
         function render(m) {
             const isMe = m.email === myData.email;
             const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const html = `<div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-4 fade-in">
-                <div class="flex items-center gap-2 mb-1">
-                    ${!isMe ? `<img src="${m.pfp}" class="w-5 h-5 rounded-full">` : ''}
-                    <span class="text-[10px] text-slate-500">${isMe ? 'You' : m.user} • ${time}</span>
-                </div>
-                <div class="message-bubble ${isMe ? 'message-sent' : 'message-received'} text-sm">${m.text}</div>
+            const html = `<div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-3">
+                <span class="text-[10px] text-slate-500 mb-1 px-1">${isMe ? 'You' : m.user} • ${time}</span>
+                <div class="message-bubble ${isMe ? 'message-sent' : 'message-received'}">${m.text}</div>
             </div>`;
             const box = document.getElementById('messageDisplay');
             box.insertAdjacentHTML('beforeend', html);
@@ -163,12 +154,10 @@
         }
 
         socket.on('update-users', users => {
-            const list = document.getElementById('user-list');
-            document.getElementById('online-count').innerText = `Online — ${users.length}`;
-            list.innerHTML = users.map(u => `
-                <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all">
-                    <div class="relative"><img src="${u.profilePic}" class="w-8 h-8 rounded-full border border-white/10"><div class="w-2 h-2 bg-emerald-500 rounded-full absolute bottom-0 right-0 border border-slate-900"></div></div>
-                    <div class="truncate text-sm font-medium">${u.firstName} ${u.lastName}</div>
+            document.getElementById('user-list').innerHTML = users.map(u => `
+                <div class="flex items-center gap-2 p-1">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <div class="text-sm text-slate-300 font-medium">${u.firstName} ${u.lastName}</div>
                 </div>
             `).join('');
         });
