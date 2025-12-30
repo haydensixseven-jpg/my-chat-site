@@ -6,49 +6,43 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('TikSnap DB Connected'))
-    .catch(err => console.error('DB Error:', err));
+    .then(() => console.log('Connect DB Linked'))
+    .catch(err => console.error(err));
 
 const UserSchema = new mongoose.Schema({
-    username: { type: String, unique: true, required: true },
+    email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
-    profilePic: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' },
-    banner: { type: String, default: '#00a8ff' },
-    bio: { type: String, default: 'Click to edit your bio...' }
+    firstName: String,
+    lastName: String,
+    profilePic: { type: String, default: () => `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}` },
+    bio: { type: String, default: "Exploring the world of Connect." }
 });
 
 const MessageSchema = new mongoose.Schema({
-    user: String, text: String, pfp: String, timestamp: { type: Date, default: Date.now }
+    user: String, text: String, pfp: String, email: String, timestamp: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', UserSchema);
 const Message = mongoose.model('Message', MessageSchema);
 
 app.use(express.static('public'));
-app.use(express.json({ limit: '20mb' })); // Higher limit for high-res banners
+app.use(express.json());
 
+// Authentication Endpoints
 app.post('/auth', async (req, res) => {
-    const { username, password, type } = req.body;
+    const { email, password, firstName, lastName, type } = req.body;
     try {
         if (type === 'signup') {
-            const existing = await User.findOne({ username });
-            if (existing) return res.json({ success: false, message: "Taken" });
-            const user = await User.create({ username, password });
+            const exists = await User.findOne({ email });
+            if (exists) return res.json({ success: false, message: "Email already registered." });
+            const user = await User.create({ email, password, firstName, lastName });
             return res.json({ success: true, user });
-        } 
-        const user = await User.findOne({ username, password });
+        }
+        const user = await User.findOne({ email, password });
         if (user) return res.json({ success: true, user });
-        res.json({ success: false, message: "Invalid Credentials" });
-    } catch (e) { res.json({ success: false }); }
-});
-
-app.post('/update-profile', async (req, res) => {
-    const { username, field, value } = req.body;
-    const user = await User.findOneAndUpdate({ username }, { [field]: value }, { new: true });
-    io.emit('user-update', user); // Tell everyone to update this user's PFP/Banner in their UI
-    res.json({ success: true, user });
+        res.json({ success: false, message: "Invalid email or password." });
+    } catch (e) { res.json({ success: false, message: "Server Error" }); }
 });
 
 let onlineUsers = {};
@@ -56,21 +50,24 @@ io.on('connection', async (socket) => {
     const history = await Message.find().sort({ _id: -1 }).limit(50);
     socket.emit('load-history', history.reverse());
 
-    socket.on('join-chat', (userData) => {
-        socket.user = userData;
-        onlineUsers[socket.id] = userData;
-        io.emit('update-user-list', Object.values(onlineUsers));
+    socket.on('join-chat', (user) => {
+        socket.user = user;
+        onlineUsers[socket.id] = user;
+        io.emit('update-users', Object.values(onlineUsers));
     });
 
-    socket.on('chat-message', async (msg) => {
+    socket.on('chat-msg', async (text) => {
         if (!socket.user) return;
-        const newMsg = await Message.create({ user: socket.user.username, text: msg, pfp: socket.user.profilePic });
-        io.emit('chat-message', newMsg);
+        const msg = await Message.create({
+            user: `${socket.user.firstName} ${socket.user.lastName}`,
+            text, pfp: socket.user.profilePic, email: socket.user.email
+        });
+        io.emit('chat-msg', msg);
     });
 
     socket.on('disconnect', () => {
         delete onlineUsers[socket.id];
-        io.emit('update-user-list', Object.values(onlineUsers));
+        io.emit('update-users', Object.values(onlineUsers));
     });
 });
 
