@@ -1,49 +1,63 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const fs = require('fs');
-const path = require('path');
-
+const mongoose = require('mongoose');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const USERS_FILE = './users.json';
-const MSGS_FILE = './messages.json';
+// --- CONNECT TO DATABASE ---
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('TikSnap DB Connected Successfully'))
+    .catch(err => console.error('DB Connection Error:', err));
 
-// Initialize files if they don't exist
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, JSON.stringify({}));
-if (!fs.existsSync(MSGS_FILE)) fs.writeFileSync(MSGS_FILE, JSON.stringify([]));
+// --- DATABASE MODELS ---
+const UserSchema = new mongoose.Schema({
+    username: { type: String, unique: true, required: true },
+    password: { type: String, required: true },
+    email: String,
+    dob: String,
+    profilePic: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }
+});
+
+const MessageSchema = new mongoose.Schema({
+    user: String,
+    text: String,
+    pfp: String,
+    timestamp: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', UserSchema);
+const Message = mongoose.model('Message', MessageSchema);
 
 app.use(express.static('public'));
 app.use(express.json());
 
-let onlineUsers = {};
+let onlineUsers = {}; 
 
-// --- AUTH ROUTES ---
-app.post('/auth', (req, res) => {
+// --- AUTHENTICATION ---
+app.post('/auth', async (req, res) => {
     const { username, password, email, dob, pfp, type } = req.body;
-    let users = JSON.parse(fs.readFileSync(USERS_FILE));
-
-    if (type === 'signup') {
-        if (users[username]) return res.json({ success: false, message: "Username taken" });
-        users[username] = { username, password, email, dob, profilePic: pfp || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' };
-        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-        return res.json({ success: true, user: users[username] });
-    } 
-    
-    const user = users[username];
-    if (user && user.password === password) {
-        return res.json({ success: true, user });
+    try {
+        if (type === 'signup') {
+            const existing = await User.findOne({ username });
+            if (existing) return res.json({ success: false, message: "Username taken" });
+            const newUser = await User.create({ username, password, email, dob, profilePic: pfp || undefined });
+            return res.json({ success: true, user: newUser });
+        } 
+        const user = await User.findOne({ username, password });
+        if (user) return res.json({ success: true, user });
+        res.json({ success: false, message: "Invalid Login Credentials" });
+    } catch (err) { 
+        res.json({ success: false, message: "Database Error" }); 
     }
-    res.json({ success: false, message: "Invalid Login" });
 });
 
-// --- SOCKET LOGIC ---
-io.on('connection', (socket) => {
-    // Load history from JSON file
-    const history = JSON.parse(fs.readFileSync(MSGS_FILE));
-    socket.emit('load-history', history.slice(-50));
+// --- REAL-TIME CHAT ---
+io.on('connection', async (socket) => {
+    // This part sends the last 50 messages to the user when they join
+    const history = await Message.find().sort({ _id: -1 }).limit(50);
+    socket.emit('load-history', history.reverse());
 
     socket.on('join-chat', (userData) => {
         socket.user = userData;
@@ -51,20 +65,13 @@ io.on('connection', (socket) => {
         io.emit('update-user-list', Object.values(onlineUsers));
     });
 
-    socket.on('chat-message', (msg) => {
+    socket.on('chat-message', async (msg) => {
         if (!socket.user) return;
-        const newMsg = { 
+        const newMsg = await Message.create({ 
             user: socket.user.username, 
             text: msg, 
-            pfp: socket.user.profilePic,
-            timestamp: new Date()
-        };
-        
-        // Save to history file
-        const history = JSON.parse(fs.readFileSync(MSGS_FILE));
-        history.push(newMsg);
-        fs.writeFileSync(MSGS_FILE, JSON.stringify(history.slice(-100), null, 2));
-
+            pfp: socket.user.profilePic 
+        });
         io.emit('chat-message', newMsg);
     });
 
@@ -75,4 +82,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`TikSnap Live (No Mongoose) on ${PORT}`));
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
