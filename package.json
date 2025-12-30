@@ -1,7 +1,7 @@
 {
   "name": "tiksnap-chat",
   "version": "1.0.0",
-  "description": "A real-time chat app",
+  "description": "TikSnap Elite Chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
