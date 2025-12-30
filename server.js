@@ -33,7 +33,7 @@ const User = mongoose.model('User', UserSchema);
 const Message = mongoose.model('Message', MessageSchema);
 
 app.use(express.static('public'));
-app.use(express.json({ limit: '10mb' })); // Increased limit for Base64 images
+app.use(express.json({ limit: '10mb' })); // Handles large image strings
 
 // --- AUTHENTICATION ---
 app.post('/auth', async (req, res) => {
@@ -91,4 +91,4 @@ io.on('connection', async (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`TikSnap Live on ${PORT}`));
+server.listen(PORT, () => console.log(`TikSnap Server Active on ${PORT}`));
