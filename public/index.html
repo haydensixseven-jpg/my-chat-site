@@ -3,214 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikSnap Elite</title>
+    <title>Connect | Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { 
-            --bg: #080a0c; 
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent: #00a8ff; 
-            --text: #e0e0e0;
-        }
-        body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        
-        /* Layout */
-        #auth-screen { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        #app-screen { display: none; width: 100vw; height: 100vh; flex-direction: row; }
-
-        /* Sidebar */
-        .sidebar { width: 280px; background: #0c0f12; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; padding: 20px; }
-        .sidebar h2 { color: var(--accent); font-size: 1.2rem; margin-bottom: 30px; }
-        .user-list { flex-grow: 1; overflow-y: auto; }
-        .user-card { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; cursor: pointer; transition: 0.2s; margin-bottom: 5px; }
-        .user-card:hover { background: var(--glass); }
-
-        /* Chat Area */
-        .chat-container { flex-grow: 1; display: flex; flex-direction: column; background: #080a0c; }
-        #messages { flex-grow: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .msg { display: flex; gap: 12px; max-width: 80%; }
-        .msg img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--glass-border); }
-        .msg-content { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px 16px; border-radius: 18px; border-top-left-radius: 4px; }
-        .msg-content b { display: block; color: var(--accent); font-size: 0.75rem; margin-bottom: 4px; }
-
-        /* Input Area */
-        .input-bar { padding: 20px; border-top: 1px solid var(--glass-border); display: flex; gap: 10px; }
-        input[type="text"] { flex-grow: 1; background: var(--glass); border: 1px solid var(--glass-border); color: white; padding: 12px 20px; border-radius: 25px; outline: none; }
-        button { background: var(--accent); color: white; border: none; padding: 10px 25px; border-radius: 25px; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        button:hover { opacity: 0.8; transform: scale(1.05); }
-
-        /* Profile Modal */
-        #profile-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
-        .modal-body { width: 400px; background: #12161b; border-radius: 24px; overflow: hidden; border: 1px solid var(--glass-border); position: relative; }
-        .banner { height: 140px; background: var(--accent); background-size: cover; background-position: center; cursor: pointer; }
-        .pfp-wrap { text-align: center; margin-top: -50px; }
-        .pfp-large { width: 100px; height: 100px; border-radius: 50%; border: 6px solid #12161b; cursor: pointer; object-fit: cover; }
-        .bio-box { padding: 20px; text-align: center; }
-        .bio-box h3 { margin: 10px 0 5px 0; }
-        #v-bio { color: #888; font-size: 14px; outline: none; padding: 10px; border-radius: 8px; transition: 0.3s; }
-        #v-bio[contenteditable="true"]:hover { background: var(--glass); }
-
-        .hidden { display: none; }
+        body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at top left, #1e1b4b, #0f172a); height: 100vh; overflow: hidden; color: white; }
+        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-gradient { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.3s ease; }
+        .input-gradient:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+        .message-bubble { max-width: 70%; padding: 0.75rem 1rem; border-radius: 1.25rem; margin-bottom: 0.5rem; position: relative; }
+        .message-received { background: rgba(255, 255, 255, 0.07); border-bottom-left-radius: 0.25rem; }
+        .message-sent { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); align-self: flex-end; border-bottom-right-radius: 0.25rem; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3); }
+        .floating-blob { position: absolute; width: 400px; height: 400px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15)); filter: blur(100px); border-radius: 50%; z-index: -1; pointer-events: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.4s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body>
+<body class="flex items-center justify-center">
+    <div class="floating-blob" style="top: -100px; left: -100px;"></div>
+    <div class="floating-blob" style="bottom: -100px; right: -100px;"></div>
 
-    <div id="auth-screen">
-        <div style="background: #12161b; padding: 40px; border-radius: 24px; border: 1px solid var(--glass-border); width: 320px; text-align: center;">
-            <h2 style="color: var(--accent); margin-bottom: 30px;">TikSnap Elite</h2>
-            <input type="text" id="user" placeholder="Username">
-            <input type="password" id="pass" placeholder="Password">
-            <button style="width: 100%; margin-top: 15px;" onclick="handleAuth()">Enter Portal</button>
+    <div id="auth-screen" class="w-full max-w-md p-4">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600 mb-4 shadow-lg shadow-indigo-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight">Connect</h1>
+            <p class="text-slate-400 mt-2">The world is waiting to hear from you.</p>
         </div>
-    </div>
 
-    <div id="app-screen">
-        <div class="sidebar">
-            <h2>TikSnap</h2>
-            <div class="user-list" id="user-list"></div>
-            <button style="background: #222; width: 100%;" onclick="logout()">Logout</button>
-        </div>
-        <div class="chat-container">
-            <div id="messages"></div>
-            <div class="input-bar">
-                <input type="text" id="msg-in" placeholder="Type your message..." onkeypress="if(event.key==='Enter')send()">
-                <button onclick="send()">Send</button>
+        <div class="glass-panel rounded-3xl p-8 relative overflow-hidden">
+            <div id="loginForm" class="fade-in">
+                <h2 class="text-2xl font-semibold mb-6">Welcome Back</h2>
+                <div class="space-y-5">
+                    <input type="email" id="li-email" placeholder="Email Address" class="input-gradient w-full px-4 py-3 rounded-xl text-white placeholder-slate-500">
+                    <input type="password" id="li-pass" placeholder="Password" class="input-gradient w-full px-4 py-3 rounded-xl text-white placeholder-slate-500">
+                    <button onclick="auth('login')" class="w-full py-3.5 bg-indigo-600 rounded-xl font-semibold shadow-xl shadow-indigo-500/10">Sign In</button>
+                </div>
+                <p class="text-center mt-8 text-slate-400 text-sm">New to Connect? <button onclick="toggleView('signup')" class="text-indigo-400 font-semibold underline">Create account</button></p>
+            </div>
+
+            <div id="signupForm" class="fade-in hidden">
+                <h2 class="text-2xl font-semibold mb-6">Create Account</h2>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" id="su-first" placeholder="First Name" class="input-gradient w-full px-4 py-3 rounded-xl text-white placeholder-slate-500">
+                        <input type="text" id="su-last" placeholder="Last Name" class="input-gradient w-full px-4 py-3 rounded-xl text-white placeholder-slate-500">
+                    </div>
+                    <input type="email" id="su-email" placeholder="Email Address" class="input-gradient w-full px-4 py-3 rounded-xl text-white placeholder-slate-500">
+                    <input type="password" id="su-pass" placeholder="Password" class="input-gradient w-full px-4 py-3 rounded-xl text-white placeholder-slate-500">
+                    <button onclick="auth('signup')" class="w-full py-3.5 bg-indigo-600 rounded-xl font-semibold">Join Community</button>
+                </div>
+                <p class="text-center mt-8 text-slate-400 text-sm">Member? <button onclick="toggleView('login')" class="text-indigo-400 font-semibold underline">Log in here</button></p>
             </div>
         </div>
     </div>
 
-    <div id="profile-modal">
-        <div class="modal-body">
-            <div class="banner" id="v-banner" onclick="document.getElementById('banner-up').click()"></div>
-            <div class="pfp-wrap">
-                <img src="" class="pfp-large" id="v-pfp" onclick="document.getElementById('pfp-up').click()">
+    <div id="app-screen" class="hidden w-full h-full flex">
+        <aside class="w-80 h-full glass-panel hidden md:flex flex-col border-r border-white/10">
+            <div class="p-6 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg"><svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg></div>
+                <h1 class="text-xl font-bold">Connect</h1>
             </div>
-            <div class="bio-box">
-                <h3 id="v-username"></h3>
-                <div id="v-bio" contenteditable="false"></div>
-                <p style="font-size: 10px; color: #444; margin-top: 10px;">(Click Banner, PFP, or Bio to edit your profile)</p>
-                <button style="margin-top: 20px; background: #222;" onclick="closeProfile()">Close</button>
+            <div class="px-6 py-2 flex-1">
+                <h2 id="online-count" class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Online Users</h2>
+                <div id="user-list" class="space-y-4 overflow-y-auto custom-scrollbar h-[calc(100vh-250px)]"></div>
             </div>
-        </div>
-        <input type="file" id="pfp-up" class="hidden" accept="image/*">
-        <input type="file" id="banner-up" class="hidden" accept="image/*">
+            <div class="p-6 bg-white/5 border-t border-white/10 flex items-center gap-3">
+                <img id="my-pfp" src="" class="w-11 h-11 rounded-full border-2 border-indigo-500/50">
+                <div class="flex-1">
+                    <p id="my-name" class="text-sm font-semibold">User</p>
+                    <p class="text-xs text-emerald-400">Active Now</p>
+                </div>
+                <button onclick="logout()" class="text-slate-400 hover:text-white">Logout</button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full bg-transparent">
+            <header class="h-20 glass-panel px-8 flex items-center justify-between border-b border-white/10">
+                <div>
+                    <h2 class="font-bold"># general-chat</h2>
+                    <p class="text-xs text-slate-400">Everything and anything</p>
+                </div>
+            </header>
+            <div id="messageDisplay" class="flex-1 overflow-y-auto p-8 flex flex-col custom-scrollbar"></div>
+            <div class="p-6 bg-slate-900/40 border-t border-white/10">
+                <form onsubmit="sendMsg(event)" class="max-w-4xl mx-auto flex items-center gap-3 bg-white/5 border border-white/10 p-2 rounded-2xl">
+                    <input type="text" id="msg-in" placeholder="Message #general-chat..." class="flex-1 bg-transparent outline-none px-4 py-2 text-white">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 p-2.5 rounded-xl transition-all">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                    </button>
+                </form>
+            </div>
+        </main>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let myData = null;
 
-        // Auto-Login
         window.onload = () => {
-            const saved = localStorage.getItem('tiksnap_user');
-            if(saved) { myData = JSON.parse(saved); startApp(); }
+            const saved = localStorage.getItem('connect_user');
+            if(saved) { myData = JSON.parse(saved); launchApp(); }
         }
 
-        async function handleAuth() {
-            const username = document.getElementById('user').value, password = document.getElementById('pass').value;
+        function toggleView(view) {
+            document.getElementById('loginForm').classList.toggle('hidden', view === 'signup');
+            document.getElementById('signupForm').classList.toggle('hidden', view === 'login');
+        }
+
+        async function auth(type) {
+            const email = document.getElementById(type === 'login' ? 'li-email' : 'su-email').value;
+            const password = document.getElementById(type === 'login' ? 'li-pass' : 'su-pass').value;
+            const firstName = document.getElementById('su-first').value;
+            const lastName = document.getElementById('su-last').value;
+
             const res = await fetch('/auth', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username, password, type: 'signup' })
+                body: JSON.stringify({ email, password, firstName, lastName, type })
             });
             const data = await res.json();
             if(data.success) {
                 myData = data.user;
-                localStorage.setItem('tiksnap_user', JSON.stringify(myData));
-                startApp();
+                localStorage.setItem('connect_user', JSON.stringify(myData));
+                launchApp();
             } else alert(data.message);
         }
 
-        function startApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app-screen').style.display = 'flex';
+        function launchApp() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            document.getElementById('my-name').innerText = myData.firstName + " " + myData.lastName;
+            document.getElementById('my-pfp').src = myData.profilePic;
             socket.emit('join-chat', myData);
         }
 
-        function logout() { localStorage.removeItem('tiksnap_user'); location.reload(); }
-
-        // Chat
-        function send() {
-            const i = document.getElementById('msg-in');
-            if(i.value) { socket.emit('chat-message', i.value); i.value = ''; }
+        function sendMsg(e) {
+            e.preventDefault();
+            const input = document.getElementById('msg-in');
+            if(input.value.trim()) { socket.emit('chat-msg', input.value); input.value = ''; }
         }
 
-        socket.on('chat-message', m => addMsg(m));
-        socket.on('load-history', msgs => msgs.forEach(m => addMsg(m)));
+        socket.on('chat-msg', m => renderMsg(m));
+        socket.on('load-history', msgs => msgs.forEach(m => renderMsg(m)));
 
-        function addMsg(m) {
-            const div = document.createElement('div');
-            div.className = 'msg';
-            div.innerHTML = `<img src="${m.pfp}" data-user="${m.user}"><div class="msg-content"><b>${m.user}</b>${m.text}</div>`;
-            const box = document.getElementById('messages');
-            box.appendChild(div);
+        function renderMsg(m) {
+            const isMe = m.email === myData.email;
+            const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const html = isMe ? `
+                <div class="flex flex-col items-end mb-6 fade-in">
+                    <span class="text-xs text-slate-500 mr-1 mb-1">You • ${time}</span>
+                    <div class="message-bubble message-sent">${m.text}</div>
+                </div>` : `
+                <div class="flex gap-3 mb-6 fade-in">
+                    <img src="${m.pfp}" class="w-9 h-9 rounded-xl self-end border border-white/10">
+                    <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 ml-1 mb-1">${m.user} • ${time}</span>
+                        <div class="message-bubble message-received">${m.text}</div>
+                    </div>
+                </div>`;
+            const box = document.getElementById('messageDisplay');
+            box.insertAdjacentHTML('beforeend', html);
             box.scrollTop = box.scrollHeight;
         }
 
-        // Live Profile Sync
-        socket.on('user-update', (updatedUser) => {
-            document.querySelectorAll(`img[data-user="${updatedUser.username}"]`).forEach(img => img.src = updatedUser.profilePic);
-            if(myData && updatedUser.username === myData.username) {
-                myData = updatedUser;
-                localStorage.setItem('tiksnap_user', JSON.stringify(myData));
-            }
-        });
-
-        socket.on('update-user-list', users => {
+        socket.on('update-users', users => {
             const list = document.getElementById('user-list');
-            list.innerHTML = '';
-            users.forEach(u => {
-                const item = document.createElement('div');
-                item.className = 'user-card';
-                item.onclick = () => openProfile(u);
-                item.innerHTML = `<img src="${u.profilePic}" style="width:30px;height:30px;border-radius:50%"> <span>${u.username}</span>`;
-                list.appendChild(item);
-            });
+            document.getElementById('online-count').innerText = `Online Users — ${users.length}`;
+            list.innerHTML = users.map(u => `
+                <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-all group">
+                    <div class="relative">
+                        <img src="${u.profilePic}" class="w-10 h-10 rounded-full border border-white/10">
+                        <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0f172a] absolute bottom-0 right-0"></div>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-white group-hover:text-indigo-400">${u.firstName} ${u.lastName}</p>
+                        <p class="text-xs text-slate-500">Online</p>
+                    </div>
+                </div>
+            `).join('');
         });
 
-        // Profile Modal
-        function openProfile(u) {
-            document.getElementById('v-username').innerText = u.username;
-            document.getElementById('v-pfp').src = u.profilePic;
-            document.getElementById('v-banner').style.backgroundImage = u.banner.startsWith('data') ? `url(${u.banner})` : 'none';
-            document.getElementById('v-banner').style.backgroundColor = u.banner.startsWith('#') ? u.banner : 'var(--accent)';
-            
-            const bio = document.getElementById('v-bio');
-            bio.innerText = u.bio;
-            document.getElementById('profile-modal').style.display = 'flex';
-
-            if(u.username === myData.username) {
-                bio.contentEditable = "true";
-                bio.onblur = () => updateField('bio', bio.innerText);
-            } else {
-                bio.contentEditable = "false";
-            }
-        }
-
-        function closeProfile() { document.getElementById('profile-modal').style.display = 'none'; }
-
-        async function updateField(field, value) {
-            const res = await fetch('/update-profile', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username: myData.username, field, value })
-            });
-            const d = await res.json();
-            if(d.success) {
-                if(field === 'profilePic') document.getElementById('v-pfp').src = value;
-                if(field === 'banner') document.getElementById('v-banner').style.backgroundImage = `url(${value})`;
-            }
-        }
-
-        document.getElementById('pfp-up').onchange = (e) => {
-            const r = new FileReader(); r.readAsDataURL(e.target.files[0]);
-            r.onload = () => updateField('profilePic', r.result);
-        };
-        document.getElementById('banner-up').onchange = (e) => {
-            const r = new FileReader(); r.readAsDataURL(e.target.files[0]);
-            r.onload = () => updateField('banner', r.result);
-        };
+        function logout() { localStorage.removeItem('connect_user'); location.reload(); }
     </script>
 </body>
 </html>
