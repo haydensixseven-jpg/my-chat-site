@@ -152,9 +152,7 @@
     </div>
 
     <script>
-        // --- LIVE DATA FETCHING ---
         async function loadProfile() {
-            // Get username from URL (e.g., profile.html?u=alex) or fallback to logged in user
             const urlParams = new URLSearchParams(window.location.search);
             let targetUser = urlParams.get('u');
             const loggedInUser = localStorage.getItem('vikvok_u');
@@ -162,9 +160,9 @@
             if (!targetUser) targetUser = loggedInUser;
             if (!targetUser) return window.location.href = 'index.html';
 
-            // Hide follow button if it's your own profile
+            const followBtn = document.getElementById('follow-btn');
             if (targetUser === loggedInUser) {
-                document.getElementById('follow-btn').style.display = 'none';
+                followBtn.style.display = 'none';
             }
 
             try {
@@ -174,15 +172,21 @@
                 if (res.ok) {
                     const { user, videos } = data;
                     
-                    // Update UI
                     document.getElementById('prof-user').innerText = `@${user.username.toLowerCase()}`;
                     document.getElementById('prof-init').innerText = user.username.charAt(0).toUpperCase();
-                    document.getElementById('count-followers').innerText = user.followers;
-                    document.getElementById('count-following').innerText = user.following;
+                    
+                    // Display actual array lengths from your new schema
+                    document.getElementById('count-followers').innerText = user.followers ? user.followers.length : 0;
+                    document.getElementById('count-following').innerText = user.following ? user.following.length : 0;
                     document.getElementById('count-likes').innerText = user.totalLikes;
                     document.getElementById('prof-bio').innerText = user.bio;
 
-                    // Inject Videos
+                    // Update Follow Button state
+                    if (user.followers && user.followers.includes(loggedInUser)) {
+                        followBtn.classList.add('following');
+                        followBtn.innerText = 'Following';
+                    }
+
                     const grid = document.getElementById('profile-videos');
                     grid.innerHTML = '';
                     videos.forEach(v => {
@@ -200,15 +204,26 @@
             }
         }
 
-        function handleFollow() {
+        async function handleFollow() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetUser = urlParams.get('u');
+            const currentUser = localStorage.getItem('vikvok_u');
             const btn = document.getElementById('follow-btn');
-            btn.classList.toggle('following');
-            btn.innerText = btn.classList.contains('following') ? 'Following' : 'Follow';
-            
-            // In a full live app, this would hit /api/follow
-            const count = document.getElementById('count-followers');
-            let current = parseInt(count.innerText);
-            count.innerText = btn.classList.contains('following') ? current + 1 : current - 1;
+
+            if (!currentUser) return alert("Please log in to follow creators.");
+
+            const res = await fetch('/api/follow', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ currentUser, targetUser })
+            });
+
+            if (res.ok) {
+                btn.classList.toggle('following');
+                btn.innerText = btn.classList.contains('following') ? 'Following' : 'Follow';
+                // Reload profile to refresh follower count
+                loadProfile();
+            }
         }
 
         function logout() {
