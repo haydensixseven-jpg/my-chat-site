@@ -1,21 +1,15 @@
 {
-  "name": "vikvok-infinite-flow",
+  "name": "vikvok-live",
   "version": "1.0.0",
-  "description": "A live social video platform with infinite scrolling and real-time engagement.",
-  "main": "index.html",
+  "description": "Infinite Flow Live Video Platform",
+  "main": "server.js",
   "scripts": {
-    "start": "serve .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "install-deps": "npm install"
   },
-  "keywords": [
-    "social",
-    "video",
-    "tiktok-clone",
-    "live-data"
-  ],
-  "author": "VikVok Creator",
-  "license": "MIT",
   "dependencies": {
-    "serve": "^14.2.1"
+    "express": "^4.18.2",
+    "mongoose": "^7.0.0",
+    "cors": "^2.8.5"
   }
 }
