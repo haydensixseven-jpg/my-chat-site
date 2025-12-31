@@ -7,10 +7,11 @@ app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 app.use(express.static('public'));
 
+// --- MONGODB CONNECTION ---
 const MONGO_URI = 'mongodb+srv://hayden:123password123@cluster0.kzhhujn.mongodb.net/nyatter?retryWrites=true&w=majority&appName=Cluster0'; 
-mongoose.connect(MONGO_URI);
+mongoose.connect(MONGO_URI).then(() => console.log("✅ DB Connected")).catch(err => console.log(err));
 
-// Updated Schema to include Notifications
+// --- DATA SCHEMAS ---
 const Post = mongoose.model('Post', new mongoose.Schema({
     user: String,
     text: String,
@@ -21,27 +22,50 @@ const Post = mongoose.model('Post', new mongoose.Schema({
     timestamp: { type: Number, default: Date.now }
 }));
 
+const User = mongoose.model('User', new mongoose.Schema({
+    username: { type: String, unique: true },
+    joinedAt: { type: Number, default: Date.now }
+}));
+
 const Notification = mongoose.model('Notification', new mongoose.Schema({
     toUser: String,
     fromUser: String,
-    type: String, // "tag"
+    type: { type: String, default: 'tag' },
     read: { type: Boolean, default: false },
     timestamp: { type: Number, default: Date.now }
 }));
 
-// Detect tags helper
-const createTagNotif = async (text, fromUser) => {
+// --- HELPERS ---
+const handleTags = async (text, fromUser) => {
     const tags = text.match(/@(\w+)/g);
     if (tags) {
         for (let tag of tags) {
             const toUser = tag.replace('@', '');
             if (toUser !== fromUser) {
-                await new Notification({ toUser, fromUser, type: 'tag' }).save();
+                await new Notification({ toUser, fromUser }).save();
             }
         }
     }
 };
 
+// --- ROUTES ---
+
+// Auth & Users
+app.post('/api/signup', async (req, res) => {
+    try {
+        const { username } = req.body;
+        const user = new User({ username });
+        await user.save();
+        res.json({ success: true });
+    } catch (e) { res.status(400).json({ error: "User exists" }); }
+});
+
+app.get('/api/users', async (req, res) => {
+    const users = await User.find().sort({ joinedAt: -1 });
+    res.json(users);
+});
+
+// Posts
 app.get('/api/posts', async (req, res) => {
     const posts = await Post.find().sort({ pinned: -1, timestamp: -1 });
     res.json(posts);
@@ -50,20 +74,11 @@ app.get('/api/posts', async (req, res) => {
 app.post('/api/posts', async (req, res) => {
     const newPost = new Post(req.body);
     await newPost.save();
-    await createTagNotif(req.body.text, req.body.user);
+    await handleTags(req.body.text, req.body.user);
     res.status(201).json(newPost);
 });
 
-app.post('/api/posts/reply', async (req, res) => {
-    const { id, user, text } = req.body;
-    const post = await Post.findById(id);
-    post.replies.push({ user, text });
-    await post.save();
-    await createTagNotif(text, user);
-    res.json(post);
-});
-
-// Notifications Routes
+// Notifications
 app.get('/api/notifications/:user', async (req, res) => {
     const notifs = await Notification.find({ toUser: req.params.user, read: false });
     res.json(notifs);
@@ -74,6 +89,7 @@ app.post('/api/notifications/clear', async (req, res) => {
     res.json({ success: true });
 });
 
+// Social Actions
 app.post('/api/posts/like', async (req, res) => {
     const { id, user } = req.body;
     const post = await Post.findById(id);
@@ -82,6 +98,16 @@ app.post('/api/posts/like', async (req, res) => {
     res.json(post);
 });
 
+app.post('/api/posts/reply', async (req, res) => {
+    const { id, user, text } = req.body;
+    const post = await Post.findById(id);
+    post.replies.push({ user, text });
+    await post.save();
+    await handleTags(text, user);
+    res.json(post);
+});
+
+// Dev Controls
 app.post('/api/posts/delete', async (req, res) => {
     const { id, user } = req.body;
     const post = await Post.findById(id);
@@ -100,4 +126,5 @@ app.post('/api/posts/pin', async (req, res) => {
     res.json(post);
 });
 
-app.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Nyatter Core Live on ${PORT}`));
