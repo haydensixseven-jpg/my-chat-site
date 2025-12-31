@@ -98,7 +98,7 @@
 
     <div id="dashboard">
         <aside class="sidebar">
-            <h2 style="color:var(--primary-violet); margin-bottom: 30px;">VIKVOK</h2>
+            <h2 style="color:var(--primary-violet); margin-bottom: 30px; letter-spacing: 2px;">VIKVOK</h2>
             <nav>
                 <a href="index.html" class="nav-item"><i class="ri-home-7-line"></i> Home</a>
                 <div class="nav-item"><i class="ri-compass-3-line"></i> Explore</div>
@@ -129,7 +129,7 @@
                         </div>
                     </div>
 
-                    <p class="bio" id="prof-bio">Loading profile flow...</p>
+                    <p class="bio" id="prof-bio">Syncing with nebula...</p>
                 </div>
             </div>
 
@@ -145,14 +145,15 @@
         <section class="right-panel">
             <button class="btn-follow" id="follow-btn" onclick="handleFollow()">Follow</button>
             <div style="margin-top: 30px; background: var(--glass); padding: 20px; border-radius: 20px;">
-                <h4 style="margin-bottom: 10px; font-size: 0.9rem;">Creator Insights</h4>
-                <p style="font-size: 0.8rem; opacity: 0.6;">All stats are live and updated via the VikVok server.</p>
+                <h4 style="margin-bottom: 10px; font-size: 0.9rem;">Creator Stats</h4>
+                <p style="font-size: 0.8rem; opacity: 0.6;">Insights for the current flow state. Data is retrieved live from the VikVok core.</p>
             </div>
         </section>
     </div>
 
     <script>
         async function loadProfile() {
+            // Get user from URL (?u=username) or default to logged in user
             const urlParams = new URLSearchParams(window.location.search);
             let targetUser = urlParams.get('u');
             const loggedInUser = localStorage.getItem('vikvok_u');
@@ -161,6 +162,8 @@
             if (!targetUser) return window.location.href = 'index.html';
 
             const followBtn = document.getElementById('follow-btn');
+            
+            // If viewing own profile, hide follow button
             if (targetUser === loggedInUser) {
                 followBtn.style.display = 'none';
             }
@@ -175,32 +178,40 @@
                     document.getElementById('prof-user').innerText = `@${user.username.toLowerCase()}`;
                     document.getElementById('prof-init').innerText = user.username.charAt(0).toUpperCase();
                     
-                    // Display actual array lengths from your new schema
+                    // Show actual counts from the database arrays
                     document.getElementById('count-followers').innerText = user.followers ? user.followers.length : 0;
                     document.getElementById('count-following').innerText = user.following ? user.following.length : 0;
-                    document.getElementById('count-likes').innerText = user.totalLikes;
+                    document.getElementById('count-likes').innerText = user.totalLikes || 0;
                     document.getElementById('prof-bio').innerText = user.bio;
 
-                    // Update Follow Button state
+                    // Set follow button state
                     if (user.followers && user.followers.includes(loggedInUser)) {
                         followBtn.classList.add('following');
                         followBtn.innerText = 'Following';
                     }
 
+                    // Populate Grid
                     const grid = document.getElementById('profile-videos');
                     grid.innerHTML = '';
+                    
+                    if(videos.length === 0) {
+                        grid.innerHTML = '<p style="opacity:0.5;">No videos uploaded yet.</p>';
+                    }
+
                     videos.forEach(v => {
                         const item = document.createElement('div');
                         item.className = 'grid-item';
                         item.innerHTML = `
-                            <video src="${v.videoUrl}" muted onmouseover="this.play()" onmouseout="this.pause(); this.currentTime=0;"></video>
+                            <video src="${v.videoUrl}" muted loop onmouseover="this.play()" onmouseout="this.pause(); this.currentTime=0;"></video>
                             <div class="view-count"><i class="ri-heart-fill"></i> ${v.likes}</div>
                         `;
                         grid.appendChild(item);
                     });
+                } else {
+                    console.error("User not found");
                 }
             } catch (err) {
-                console.error("Failed to load profile", err);
+                console.error("Database connection error", err);
             }
         }
 
@@ -210,7 +221,7 @@
             const currentUser = localStorage.getItem('vikvok_u');
             const btn = document.getElementById('follow-btn');
 
-            if (!currentUser) return alert("Please log in to follow creators.");
+            if (!currentUser) return alert("Log in to follow creators!");
 
             const res = await fetch('/api/follow', {
                 method: 'POST',
@@ -221,7 +232,7 @@
             if (res.ok) {
                 btn.classList.toggle('following');
                 btn.innerText = btn.classList.contains('following') ? 'Following' : 'Follow';
-                // Reload profile to refresh follower count
+                // Refresh data to show new follower count
                 loadProfile();
             }
         }
