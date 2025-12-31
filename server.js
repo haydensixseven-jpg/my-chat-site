@@ -3,202 +3,143 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
 
-// Set high limits for Base64 Profile Pictures and Images
 app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(cors());
 app.use(express.static('public'));
 
-// --- DATABASE CONNECTION ---
+// --- DB CONNECTION ---
 const MONGO_URI = 'mongodb+srv://hayden:123password123@cluster0.kzhhujn.mongodb.net/nyatter?retryWrites=true&w=majority&appName=Cluster0'; 
-
-mongoose.connect(MONGO_URI)
-    .then(() => console.log("🚀 Quantum Database Linked"))
-    .catch(err => console.error("❌ Link Failure:", err));
+mongoose.connect(MONGO_URI).then(() => console.log("✅ Nyatter Database Online"));
 
 // --- SCHEMAS ---
-const UserSchema = new mongoose.Schema({
-    username: { type: String, unique: true, required: true },
-    email: { type: String, unique: true, required: true },
-    password: { type: String, required: true },
-    pfp: { type: String, default: "" },
-    isDev: { type: Boolean, default: false },
+const User = mongoose.model('User', new mongoose.Schema({
+    username: { type: String, unique: true },
+    email: { type: String, unique: true },
+    password: { type: String },
+    pfp: { type: String, default: "default.png" }, // Default PFP logic
+    rank: { type: String, default: "Member" }, // mod, admin, superadmin, owner, dev
     joinedAt: { type: Number, default: Date.now }
-});
+}));
 
-const PostSchema = new mongoose.Schema({
+const Post = mongoose.model('Post', new mongoose.Schema({
     user: String,
-    userPfp: String, // Storing PFP at time of post for performance
+    userPfp: String,
+    userRank: String, // Store rank at time of post for display
     text: String,
-    img: { type: String, default: "" },
+    img: String,
     likes: { type: Array, default: [] },
     replies: [{
         user: String,
         userPfp: String,
+        userRank: String,
         text: String,
         timestamp: { type: Number, default: Date.now }
     }],
     pinned: { type: Boolean, default: false },
     timestamp: { type: Number, default: Date.now }
-});
+}));
 
-const NotificationSchema = new mongoose.Schema({
-    toUser: String,
-    fromUser: String,
-    read: { type: Boolean, default: false },
-    timestamp: { type: Number, default: Date.now }
-});
+// --- ROUTES ---
 
-const User = mongoose.model('User', UserSchema);
-const Post = mongoose.model('Post', PostSchema);
-const Notification = mongoose.model('Notification', NotificationSchema);
-
-// --- HELPER: TAGGING SYSTEM ---
-const handleMentions = async (text, fromUser) => {
-    const mentions = text.match(/@(\w+)/g);
-    if (!mentions) return;
-    const uniqueMentions = [...new Set(mentions.map(m => m.replace('@', '')))];
-    for (const target of uniqueMentions) {
-        if (target !== fromUser) {
-            await new Notification({ toUser: target, fromUser }).save();
-        }
+// Promotion Route (Triggered by your console command)
+app.post('/api/admin/promote', async (req, res) => {
+    const { targetUser, rank, requester } = req.body;
+    
+    // Safety check: Only an 'owner' or 'dev' can promote others
+    const admin = await User.findOne({ username: requester });
+    if (!admin || !['owner', 'dev'].includes(admin.rank.toLowerCase())) {
+        return res.status(403).json({ error: "Insufficient permissions to promote." });
     }
-};
 
-// --- AUTHENTICATION ---
+    const validRanks = ['mod', 'admin', 'superadmin', 'owner', 'dev', 'member'];
+    if (!validRanks.includes(rank.toLowerCase())) {
+        return res.status(400).json({ error: "Invalid rank specified." });
+    }
+
+    await User.updateOne({ username: targetUser }, { rank: rank });
+    res.json({ success: true, message: `${targetUser} promoted to ${rank}` });
+});
+
+// Post Logic with Rank Support
+app.post('/api/posts', async (req, res) => {
+    const { user, text, img } = req.body;
+    const userData = await User.findOne({ username: user });
+    
+    // Ensure default PFP if none exists
+    const finalPfp = (userData.pfp && userData.pfp !== "") ? userData.pfp : "default.png";
+
+    const post = new Post({ 
+        user, 
+        userPfp: finalPfp, 
+        userRank: userData.rank, 
+        text, 
+        img 
+    });
+    await post.save();
+    res.status(201).json(post);
+});
+
+// Signup with Default PFP Fallback
 app.post('/api/signup', async (req, res) => {
-    try {
-        const { username, email, password, pfp } = req.body;
-        const exists = await User.findOne({ $or: [{ username }, { email }] });
-        if (exists) return res.status(400).json({ error: "Identity already exists in the grid." });
-
-        const isDev = username === "HaydenDev";
-        const newUser = new User({ username, email, password, pfp, isDev });
-        await newUser.save();
-        res.json({ success: true, user: { username, pfp, isDev } });
-    } catch (e) { res.status(500).json({ error: "Signup Failed" }); }
+    const { username, email, password, pfp } = req.body;
+    const isFirstAccount = username === "HaydenDev";
+    
+    const newUser = new User({ 
+        username, 
+        email, 
+        password, 
+        pfp: pfp || "default.png", 
+        rank: isFirstAccount ? "dev" : "Member" 
+    });
+    
+    await newUser.save();
+    res.json({ success: true, user: newUser });
 });
 
 app.post('/api/login', async (req, res) => {
     const { identifier, password } = req.body;
     const user = await User.findOne({ $or: [{ username: identifier }, { email: identifier }] });
-    if (!user || user.password !== password) return res.status(401).json({ error: "Invalid Credentials" });
-    res.json({ success: true, user: { username: user.username, pfp: user.pfp, isDev: user.isDev } });
+    if (!user || user.password !== password) return res.status(401).json({ error: "Invalid" });
+    res.json({ success: true, user });
 });
 
-app.post('/api/user/update', async (req, res) => {
-    const { oldUsername, newUsername, newPassword, newPfp } = req.body;
-    try {
-        const user = await User.findOne({ username: oldUsername });
-        if (!user) return res.status(404).json({ error: "User not found" });
-
-        if (newUsername) user.username = newUsername;
-        if (newPassword) user.password = newPassword;
-        if (newPfp) user.pfp = newPfp;
-
-        await user.save();
-        if (newUsername && newUsername !== oldUsername) {
-            await Post.updateMany({ user: oldUsername }, { user: newUsername, userPfp: user.pfp });
-        }
-        res.json({ success: true, user: { username: user.username, pfp: user.pfp, isDev: user.isDev } });
-    } catch (e) { res.status(400).json({ error: "Update rejected by system." }); }
-});
-
-// --- FEED & INTERACTION ---
 app.get('/api/posts', async (req, res) => {
-    const posts = await Post.find().sort({ pinned: -1, timestamp: -1 }).limit(100);
+    const posts = await Post.find().sort({ pinned: -1, timestamp: -1 });
     res.json(posts);
 });
 
-app.post('/api/posts', async (req, res) => {
-    try {
-        const { user, text, img } = req.body;
-        const userData = await User.findOne({ username: user });
-        const post = new Post({ 
-            user, 
-            userPfp: userData ? userData.pfp : "", 
-            text, 
-            img 
-        });
-        await post.save();
-        await handleMentions(text, user);
-        res.status(201).json(post);
-    } catch (e) { res.status(500).json({ error: "Transmission failed" }); }
-});
-
-app.post('/api/posts/reply', async (req, res) => {
-    const { id, user, text } = req.body;
-    const userData = await User.findOne({ username: user });
-    const post = await Post.findById(id);
-    if (post) {
-        post.replies.push({ user, userPfp: userData ? userData.pfp : "", text });
-        await post.save();
-        await handleMentions(text, user);
-        res.json(post);
-    } else { res.status(404).send("Post missing"); }
-});
-
-app.post('/api/posts/like', async (req, res) => {
-    const { id, user } = req.body;
-    const post = await Post.findById(id);
-    if (post) {
-        post.likes.includes(user) ? post.likes = post.likes.filter(u => u !== user) : post.likes.push(user);
-        await post.save();
-        res.json(post);
-    }
-});
-
-// --- ADMIN CONTROL PANEL LOGIC ---
-app.post('/api/admin/action', async (req, res) => {
-    const { adminUser, action, targetId } = req.body;
-    if (adminUser !== "HaydenDev") return res.status(403).json({ error: "Access Denied" });
-
-    try {
-        switch (action) {
-            case 'WIPE_ALL':
-                await User.deleteMany({});
-                await Post.deleteMany({});
-                await Notification.deleteMany({});
-                return res.json({ success: true, message: "System Reset Successful" });
-            
-            case 'DELETE_USER':
-                await User.deleteOne({ username: targetId });
-                await Post.deleteMany({ user: targetId });
-                return res.json({ success: true, message: `User ${targetId} Purged` });
-
-            case 'DELETE_POST':
-                await Post.findByIdAndDelete(targetId);
-                return res.json({ success: true });
-
-            case 'TOGGLE_PIN':
-                const post = await Post.findById(targetId);
-                if (post) {
-                    post.pinned = !post.pinned;
-                    await post.save();
-                }
-                return res.json({ success: true });
-
-            default:
-                return res.status(400).json({ error: "Unknown Protocol" });
-        }
-    } catch (e) { res.status(500).json({ error: "Admin protocol failure" }); }
-});
-
-// --- SYSTEM ROUTES ---
 app.get('/api/users', async (req, res) => {
-    const users = await User.find({}, 'username pfp joinedAt').sort({ joinedAt: -1 });
+    const users = await User.find({}, 'username pfp rank');
     res.json(users);
 });
 
-app.get('/api/notifications/:user', async (req, res) => {
-    const notifs = await Notification.find({ toUser: req.params.user, read: false });
-    res.json(notifs);
+// Optimized Admin Actions based on Rank
+app.post('/api/admin/action', async (req, res) => {
+    const { adminUser, action, targetId } = req.body;
+    const user = await User.findOne({ username: adminUser });
+    if (!user) return res.status(403).send("Denied");
+
+    const r = user.rank.toLowerCase();
+
+    if (action === 'DELETE_POST' && ['mod', 'admin', 'superadmin', 'owner', 'dev'].includes(r)) {
+        await Post.findByIdAndDelete(targetId);
+        return res.json({ success: true });
+    }
+    
+    if (action === 'TOGGLE_PIN' && ['admin', 'superadmin', 'owner', 'dev'].includes(r)) {
+        const p = await Post.findById(targetId);
+        p.pinned = !p.pinned;
+        await p.save();
+        return res.json({ success: true });
+    }
+
+    if (action === 'WIPE_ALL' && ['owner', 'dev'].includes(r)) {
+        await User.deleteMany({});
+        await Post.deleteMany({});
+        return res.json({ success: true });
+    }
+
+    res.status(403).json({ error: "Rank too low for this action." });
 });
 
-app.post('/api/notifications/clear', async (req, res) => {
-    await Notification.findByIdAndDelete(req.body.id);
-    res.json({ success: true });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🛰️ Nyatter Core Online: Port ${PORT}`));
+app.listen(3000, () => console.log("🚀 Server running on port 3000"));
