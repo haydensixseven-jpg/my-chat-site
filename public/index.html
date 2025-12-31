@@ -3,965 +3,523 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SketchDash Pro | Ultimate Creative Combat</title>
+    <title>SketchDash Pro | Creative Combat</title>
     
-    <!-- External Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <!-- FONT AWESOME FOR ICONS -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* --- CORE VARIABLES --- */
         :root {
-            /* Brand Colors */
             --primary: #6366F1;
             --primary-dark: #4F46E5;
-            --primary-light: #818CF8;
-            
-            --secondary: #F59E0B; /* Gold for wins/currency */
-            --secondary-dark: #D97706;
-            
-            --accent: #EC4899; /* Pink for highlights */
-            --success: #10B981;
-            --danger: #EF4444;
-            
+            --secondary: #F59E0B;
             --bg-color: #F8FAFC;
-            --panel-bg: rgba(255, 255, 255, 0.95);
-            
-            /* Ranks */
-            --rank-novice: #94A3B8;
-            --rank-rookie: #3B82F6;
-            --rank-artist: #10B981;
-            --rank-master: #F59E0B;
-            --rank-legend: #EC4899;
-            --rank-god: #7C3AED;
-        }
-
-        /* --- GLOBAL RESETS --- */
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
+            --panel-bg: rgba(255, 255, 255, 0.98);
         }
 
         body {
             font-family: 'Nunito', sans-serif;
             background-color: var(--bg-color);
-            /* Complex Grid Pattern Background */
-            background-image: 
-                linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 24px 24px;
             overflow: hidden;
             height: 100vh;
-            width: 100vw;
             margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        /* --- TYPOGRAPHY --- */
-        .font-game { font-family: 'Fredoka One', cursive; letter-spacing: 1px; }
+        .font-game { font-family: 'Fredoka One', cursive; }
 
-        /* --- UTILITIES --- */
-        .hidden { display: none !important; }
-        .flex-center { display: flex; align-items: center; justify-content: center; }
-        .full-screen { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        
-        /* --- SCROLLBARS --- */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); }
-        ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
-        ::-webkit-scrollbar-thumb:hover { background: #A0AEC0; }
-
-        /* --- GLASSMORPHISM --- */
+        /* Modern UI Elements */
         .glass-panel {
             background: var(--panel-bg);
-            backdrop-filter: blur(16px);
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 
-                0 20px 40px -10px rgba(0,0,0,0.1), 
-                0 0 0 1px rgba(255,255,255,0.5) inset;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
         }
 
-        /* --- BUTTONS --- */
         .btn-3d {
-            position: relative;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(0);
+            transition: all 0.1s;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.15);
+        }
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.15);
         }
 
-        .btn-3d:active { transform: translateY(4px); box-shadow: none !important; }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 6px 0 var(--primary-dark);
-            border-radius: 16px;
-        }
-
-        .btn-secondary {
-            background: var(--secondary);
-            color: white;
-            box-shadow: 0 6px 0 var(--secondary-dark);
-            border-radius: 16px;
-        }
-
-        .btn-icon {
-            width: 48px; 
-            height: 48px;
-            border-radius: 14px;
-            background: white;
-            color: #475569;
-            box-shadow: 0 4px 0 #CBD5E0;
-            border: 2px solid #E2E8F0;
-            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
-        }
-        .btn-icon:hover { background: #F8FAFC; color: var(--primary); }
-        .btn-icon:active { transform: translateY(4px); box-shadow: none; border-bottom-width: 2px; }
-
-        .btn-shop-buy {
-            background: var(--success);
-            color: white;
-            box-shadow: 0 4px 0 #15803D;
-            padding: 8px 16px;
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 0.8rem;
-            width: 100%;
-        }
-        .btn-shop-buy:disabled {
-            background: #94A3B8;
-            box-shadow: none;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* --- CARDS & ITEMS --- */
-        .player-card {
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .rank-badge {
-            position: absolute;
-            top: -5px; right: -5px;
-            font-size: 0.6rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            color: white;
-            font-weight: 900;
-            text-transform: uppercase;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 5;
-        }
-
-        /* --- SHOP ITEMS --- */
-        .shop-item {
-            position: relative;
-            background: white;
-            border: 2px solid #E2E8F0;
+        .avatar-slot {
+            width: 80px; height: 80px;
             border-radius: 20px;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        .shop-item:hover { border-color: var(--primary); transform: translateY(-2px); }
-        .shop-item.owned { border-color: var(--success); background: #F0FDF4; }
-        .shop-item.locked { opacity: 0.7; filter: grayscale(1); }
-        
-        .currency-pill {
-            background: #FEF3C7;
-            color: #D97706;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: 800;
-            display: flex; align-items: center; gap: 6px;
-            border: 2px solid #FCD34D;
-        }
-
-        /* --- CANVAS --- */
-        #canvas-wrapper {
-            background: white;
-            background-image: 
-                linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
-                linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
-                linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
-            cursor: crosshair;
-        }
-
-        /* --- ANIMATIONS --- */
-        @keyframes pop {
-            0% { transform: scale(0.8); opacity: 0; }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        .animate-float { animation: float 3s ease-in-out infinite; }
-
-        .modal-overlay {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(8px);
-            z-index: 9999;
-        }
-
-        /* --- TOOLBAR --- */
-        .toolbar-group {
-            background: #F1F5F9;
-            padding: 4px;
-            border-radius: 16px;
-            display: flex; gap: 4px;
-        }
-
-        .tool-btn {
-            width: 44px; height: 44px;
-            border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem;
-            color: #64748B;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-        .tool-btn:hover { background: white; color: var(--primary); }
-        .tool-btn.active { background: white; color: var(--primary); border-color: var(--primary); box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2); }
-
-        .color-swatch {
-            width: 36px; height: 36px;
-            border-radius: 10px;
+            font-size: 2rem;
             cursor: pointer;
-            border: 3px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.1s;
+            border: 4px solid transparent;
+            background: #f1f5f9;
+            transition: all 0.2s;
         }
-        .color-swatch:hover { transform: scale(1.15); }
-        .color-swatch.active { transform: scale(1.1); outline: 3px solid var(--primary); outline-offset: 2px; }
+        .avatar-slot.active {
+            border-color: var(--primary);
+            background: white;
+            transform: scale(1.1);
+        }
 
+        /* Canvas Styles */
+        #game-canvas {
+            touch-action: none;
+            cursor: crosshair;
+            background: white;
+            border-radius: 12px;
+        }
+
+        /* Chat Styles */
+        .message {
+            animation: slideIn 0.2s ease-out;
+            padding: 4px 8px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+        @keyframes slideIn { from { transform: translateX(10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .correct-guess {
+            background: #dcfce7;
+            color: #166534;
+            font-weight: 800;
+            text-align: center;
+            border: 1px dashed #22c55e;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body>
+<body class="flex items-center justify-center">
 
-    <!-- ================================================================== -->
-    <!--                          SCREEN: MENU                              -->
-    <!-- ================================================================== -->
-    <div id="screen-menu" class="fixed inset-0 z-50 flex items-center justify-center p-6 animate-pop">
-        <div class="w-full max-w-6xl h-[85vh] glass-panel rounded-[50px] shadow-2xl flex overflow-hidden relative">
-            
-            <!-- DECORATION: Corner Badges -->
-            <div class="absolute top-8 left-8 z-10 flex gap-4">
-                <div class="currency-pill shadow-lg bg-white">
-                    <i class="fas fa-trophy text-yellow-500"></i>
-                    <span id="display-wins">0</span> Wins
-                </div>
-                <div class="currency-pill shadow-lg bg-white">
-                    <i class="fas fa-tint text-indigo-500"></i>
-                    <span id="display-ink">0</span> Ink
-                </div>
-            </div>
-
-            <div class="absolute top-8 right-8 z-10 flex gap-3">
-                <button onclick="openShop()" class="btn-icon text-yellow-500 border-yellow-200" title="Shop"><i class="fas fa-store"></i></button>
-                <button onclick="openProfile()" class="btn-icon text-blue-500 border-blue-200" title="Profile"><i class="fas fa-user"></i></button>
-                <button onclick="toggleSettings()" class="btn-icon text-slate-500 border-slate-200" title="Settings"><i class="fas fa-cog"></i></button>
-            </div>
-
-            <!-- LEFT: Avatar & Identity -->
-            <div class="w-1/3 bg-slate-50 border-r border-slate-200 p-10 flex flex-col items-center justify-center relative">
-                <div class="relative group cursor-pointer mb-8" onclick="openProfile()">
-                    <div id="menu-avatar-bg" class="w-64 h-64 rounded-[60px] bg-white shadow-xl border-[8px] border-white flex items-center justify-center text-9xl relative overflow-hidden animate-float">
-                        <span id="menu-avatar-emoji">🐱</span>
-                        <img id="menu-avatar-img" class="hidden w-full h-full object-cover">
-                    </div>
-                    <div id="menu-accessory" class="absolute -top-6 -right-6 text-8xl drop-shadow-md animate-float" style="animation-delay: 1s">👑</div>
-                    <div class="absolute bottom-4 right-4 bg-indigo-600 text-white p-3 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                        <i class="fas fa-pencil-alt"></i>
-                    </div>
-                </div>
-
-                <div class="text-center space-y-2">
-                    <div id="menu-rank-badge" class="inline-block px-3 py-1 rounded-full bg-slate-200 text-xs font-black text-slate-500 uppercase tracking-widest mb-2">NOVICE</div>
-                    <h2 id="menu-username" class="text-3xl font-game text-slate-800">PlayerOne</h2>
-                    <p class="text-slate-400 font-bold text-sm">Level <span id="menu-level">1</span> Artist</p>
-                </div>
-            </div>
-
-            <!-- RIGHT: Game Actions -->
-            <div class="flex-1 p-16 flex flex-col justify-center relative bg-white">
-                <div class="space-y-4 mb-12">
-                    <h1 class="text-8xl font-game text-slate-900 tracking-tighter leading-none">
-                        Sketch<span class="text-indigo-500">Dash</span>
-                    </h1>
-                    <p class="text-2xl font-bold text-slate-400 max-w-md">
-                        Draw, guess, and dominate the canvas in real-time battles.
-                    </p>
-                </div>
-
-                <div class="w-full max-w-md space-y-6">
-                    <div class="relative">
-                        <i class="fas fa-user absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 text-xl"></i>
-                        <input type="text" id="input-username" class="w-full p-6 pl-14 rounded-2xl border-4 border-slate-100 font-bold text-xl outline-none focus:border-indigo-500 bg-slate-50 transition-all" placeholder="Enter your name..." maxlength="12">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="joinGame('public')" class="btn-3d btn-primary w-full py-6 font-game text-2xl flex flex-col items-center gap-1 group">
-                            <span>PLAY NOW</span>
-                            <span class="text-xs font-sans font-bold opacity-80 group-hover:opacity-100">Public Match</span>
-                        </button>
-                        <button onclick="joinGame('private')" class="btn-3d btn-secondary w-full py-6 font-game text-2xl flex flex-col items-center gap-1 group">
-                            <span>PRIVATE</span>
-                            <span class="text-xs font-sans font-bold opacity-80 group-hover:opacity-100">Create/Join</span>
-                        </button>
-                    </div>
+    <!-- MENU SCREEN -->
+    <div id="screen-menu" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-4xl glass-panel rounded-[40px] overflow-hidden flex flex-col md:flex-row shadow-2xl">
+            <!-- Left: Profile & Customization -->
+            <div class="md:w-1/2 p-10 bg-slate-50 border-r border-slate-100 flex flex-col items-center">
+                <div id="active-avatar" class="w-48 h-48 bg-white rounded-[40px] shadow-lg flex items-center justify-center text-8xl mb-6 border-4 border-white ring-4 ring-indigo-100">
+                    🐱
                 </div>
                 
-                <!-- Server Status -->
-                <div class="absolute bottom-8 left-16 flex items-center gap-3 text-slate-400 text-xs font-bold">
-                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span>US-EAST-1 ONLINE</span>
-                    <span class="mx-2">•</span>
-                    <span>v2.4.0</span>
+                <div class="w-full space-y-4">
+                    <div>
+                        <label class="text-xs font-black uppercase text-slate-400 ml-2">Display Name</label>
+                        <input type="text" id="input-username" maxlength="15" class="w-full p-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-indigo-500 outline-none font-bold text-lg shadow-sm transition-all" value="Player123">
+                    </div>
+                    
+                    <div class="grid grid-cols-4 gap-3" id="avatar-grid">
+                        <!-- Avatars populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Action Area -->
+            <div class="md:w-1/2 p-10 flex flex-col justify-center items-center text-center">
+                <h1 class="font-game text-6xl text-indigo-600 mb-2">SKETCH DASH</h1>
+                <p class="text-slate-500 font-bold mb-10">THE ULTIMATE PUBLIC DRAWING ARENA</p>
+
+                <div class="w-full space-y-4">
+                    <button onclick="joinPublicGame()" class="btn-3d w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-3xl font-game text-2xl">
+                        PLAY NOW
+                    </button>
+                    
+                    <div class="flex gap-4">
+                        <button onclick="toggleModal('modal-how')" class="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50">
+                            <i class="fas fa-question-circle mr-2"></i>Tutorial
+                        </button>
+                        <button onclick="toggleModal('modal-shop')" class="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50">
+                            <i class="fas fa-shopping-bag mr-2"></i>Shop
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-10 flex items-center gap-2 text-slate-400 font-bold text-sm">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <span id="player-count">0</span> Players Online
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ================================================================== -->
-    <!--                          SCREEN: GAMEPLAY                          -->
-    <!-- ================================================================== -->
-    <div id="screen-game" class="hidden w-full h-full p-4 flex flex-col gap-4">
-        
-        <!-- HEADER -->
-        <header class="glass-panel h-24 rounded-3xl flex items-center px-8 justify-between shrink-0 relative z-20">
-            <div class="flex items-center gap-10">
-                <div class="text-center">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Round</p>
-                    <p id="ui-round" class="font-game text-3xl text-slate-700">1<span class="text-xl text-slate-300">/</span>10</p>
-                </div>
-                <div class="w-px h-12 bg-slate-200"></div>
-                <div class="text-center">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Timer</p>
-                    <p id="ui-timer" class="font-game text-3xl text-indigo-500">60</p>
-                </div>
-            </div>
-
-            <!-- Word Display -->
-            <div id="ui-word-container" class="flex flex-col items-center">
-                <div id="ui-word-box" class="flex gap-3 mb-1">
-                    <!-- Letters injected here -->
-                </div>
-                <p id="ui-hint" class="text-xs font-bold text-slate-400 uppercase tracking-widest">Waiting for round...</p>
-            </div>
-
-            <!-- Actions -->
+    <!-- GAME SCREEN -->
+    <div id="screen-game" class="hidden fixed inset-0 flex flex-col p-4 gap-4">
+        <!-- Top Bar -->
+        <div class="h-20 glass-panel rounded-2xl flex items-center justify-between px-6">
             <div class="flex items-center gap-4">
-                <button onclick="toggleSound()" class="btn-icon w-12 h-12 rounded-xl text-lg"><i class="fas fa-volume-up"></i></button>
-                <button onclick="leaveGame()" class="px-6 py-3 rounded-xl bg-red-50 text-red-500 font-bold text-xs hover:bg-red-100 transition-colors uppercase tracking-widest border border-red-100">Leave</button>
-            </div>
-        </header>
-
-        <!-- MAIN CONTENT -->
-        <div class="flex-1 flex gap-4 min-h-0 relative z-10">
-            
-            <!-- LEFT: LEADERBOARD -->
-            <aside class="w-72 glass-panel rounded-[32px] flex flex-col p-5 shrink-0">
-                <div class="flex justify-between items-center mb-4 px-2">
-                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest">Players</h3>
-                    <span id="player-count" class="bg-slate-100 text-slate-500 px-2 py-1 rounded-lg text-[10px] font-bold">0/8</span>
+                <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-game text-xl" id="timer-display">
+                    60
                 </div>
-                <div id="ui-players" class="flex-1 overflow-y-auto space-y-3 pr-1 custom-scroll">
-                    <!-- Player Cards -->
-                </div>
-            </aside>
-
-            <!-- CENTER: CANVAS -->
-            <main class="flex-1 glass-panel rounded-[32px] p-2 relative flex flex-col border-4 border-white shadow-sm">
-                <div id="canvas-wrapper" class="w-full h-full rounded-[24px]">
-                    <canvas id="main-canvas"></canvas>
-                </div>
-
-                <!-- FLOATING TOOLBAR -->
-                <div id="toolbar" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-2xl p-3 rounded-[24px] flex items-center gap-4 border border-slate-200 hidden animate-pop">
-                    
-                    <!-- Tools -->
-                    <div class="toolbar-group">
-                        <button class="tool-btn active" data-tool="brush" onclick="setTool('brush')"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="tool-btn" data-tool="eraser" onclick="setTool('eraser')"><i class="fas fa-eraser"></i></button>
-                        <button class="tool-btn" onclick="fillCanvas()"><i class="fas fa-fill-drip"></i></button>
-                    </div>
-
-                    <!-- Colors -->
-                    <div class="flex gap-2 px-2" id="quick-colors">
-                        <!-- Colors injected -->
-                    </div>
-                    
-                    <!-- Color Picker -->
-                    <label class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-400 to-pink-500 cursor-pointer shadow-sm hover:scale-105 transition-transform">
-                        <input type="color" id="color-picker" class="opacity-0 w-full h-full cursor-pointer" oninput="setCustomColor(this.value)">
-                    </label>
-
-                    <!-- Size -->
-                    <div class="flex flex-col w-24 px-2">
-                        <input type="range" id="brush-size" min="2" max="50" value="8" class="accent-indigo-500 h-2 bg-slate-200 rounded-lg appearance-none">
-                    </div>
-
-                    <button onclick="clearCanvas()" class="w-10 h-10 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </div>
-
-                <!-- OVERLAY: WAITING -->
-                <div id="overlay-waiting" class="absolute inset-0 z-20 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center text-white">
-                    <div class="mb-6 relative">
-                        <div class="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 animate-pulse"></div>
-                        <i class="fas fa-clock text-6xl animate-bounce relative z-10"></i>
-                    </div>
-                    <h2 class="font-game text-5xl mb-2">Waiting Room</h2>
-                    <p class="text-indigo-300 font-bold uppercase tracking-widest text-sm">Need 2+ players to begin</p>
-                </div>
-
-                <!-- OVERLAY: WORD SELECT -->
-                <div id="overlay-word" class="absolute inset-0 z-30 bg-slate-900/95 backdrop-blur-xl flex flex-col items-center justify-center text-white hidden">
-                    <p class="text-indigo-400 font-bold uppercase tracking-[0.5em] mb-8">It's Your Turn!</p>
-                    <h2 class="font-game text-5xl mb-12">What will you draw?</h2>
-                    <div id="word-choices" class="flex gap-6"></div>
-                </div>
-
-                <!-- OVERLAY: ROUND END -->
-                <div id="overlay-round" class="absolute inset-0 z-30 bg-slate-900/95 flex flex-col items-center justify-center text-white hidden text-center">
-                    <p class="text-slate-400 font-bold uppercase tracking-widest mb-4">The word was</p>
-                    <h2 id="round-word-reveal" class="font-game text-7xl text-yellow-400 mb-8 drop-shadow-lg">---</h2>
-                    <div id="round-winner-display" class="bg-white/10 px-8 py-4 rounded-2xl border border-white/10 backdrop-blur-md">
-                        <!-- Winner info -->
-                    </div>
-                </div>
-            </main>
-
-            <!-- RIGHT: CHAT -->
-            <aside class="w-80 glass-panel rounded-[32px] flex flex-col overflow-hidden shrink-0">
-                <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                    <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Chat Stream</span>
-                </div>
-                <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm font-bold">
-                    <div class="text-center text-xs text-slate-400 py-4">Welcome to the chat!</div>
-                </div>
-                <div class="p-4 bg-white border-t border-slate-100">
-                    <input type="text" id="chat-input" placeholder="Type your guess..." class="w-full p-3 rounded-xl bg-slate-50 border-2 border-slate-200 outline-none focus:border-indigo-500 font-bold transition-all">
-                </div>
-            </aside>
-        </div>
-    </div>
-
-    <!-- ================================================================== -->
-    <!--                          MODAL: SHOP                               -->
-    <!-- ================================================================== -->
-    <div id="modal-shop" class="modal-overlay fixed inset-0 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white w-full max-w-4xl h-[80vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col relative transform scale-95 transition-transform duration-300" id="shop-content">
-            <button onclick="closeModal('modal-shop')" class="absolute top-6 right-6 z-20 w-10 h-10 bg-slate-100 rounded-full hover:bg-red-100 hover:text-red-500 transition-colors flex items-center justify-center font-bold text-xl">✕</button>
-            
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div>
-                    <h2 class="text-4xl font-game text-slate-800">Item Shop</h2>
-                    <p class="text-slate-400 font-bold text-sm mt-1">Spend your Ink & Wins here!</p>
+                    <div class="text-xs font-black text-slate-400 uppercase leading-none">Round</div>
+                    <div class="text-xl font-game text-slate-700" id="round-display">1 / 10</div>
                 </div>
-                <div class="flex gap-4">
-                    <div class="currency-pill bg-yellow-100 text-yellow-600 border-yellow-200 px-4 py-2 rounded-xl font-black">
-                        <i class="fas fa-trophy mr-2"></i> <span id="shop-wins">0</span>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center">
+                <div id="word-display" class="font-game text-3xl tracking-[0.3em] text-slate-800">
+                    _ _ _ _ _ _
+                </div>
+                <div id="drawer-name" class="text-xs font-bold text-indigo-500">Player is drawing...</div>
+            </div>
+
+            <button onclick="leaveGame()" class="px-6 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-xl font-bold transition-all">
+                Exit
+            </button>
+        </div>
+
+        <div class="flex-1 flex gap-4 overflow-hidden">
+            <!-- Sidebar: Players -->
+            <div class="w-64 glass-panel rounded-2xl flex flex-col overflow-hidden">
+                <div class="p-4 border-b bg-slate-50/50 font-black text-xs text-slate-400 uppercase tracking-widest">
+                    Players
+                </div>
+                <div id="player-list" class="flex-1 overflow-y-auto p-2 space-y-2">
+                    <!-- Players JS -->
+                </div>
+            </div>
+
+            <!-- Center: Canvas Area -->
+            <div class="flex-1 relative flex flex-col gap-4">
+                <div id="canvas-container" class="flex-1 bg-white rounded-3xl shadow-inner relative overflow-hidden border-4 border-white ring-1 ring-slate-200">
+                    <canvas id="game-canvas"></canvas>
+                    
+                    <!-- Tool Overlay (Only for Drawer) -->
+                    <div id="drawing-tools" class="absolute bottom-6 left-1/2 -translate-x-1/2 hidden flex items-center gap-3 p-3 bg-slate-900/90 backdrop-blur rounded-2xl shadow-2xl">
+                        <div class="flex gap-2 pr-3 border-r border-slate-700">
+                            <button onclick="setTool('pen')" class="tool-btn active w-10 h-10 rounded-lg flex items-center justify-center text-white" id="tool-pen"><i class="fas fa-pencil"></i></button>
+                            <button onclick="setTool('eraser')" class="tool-btn w-10 h-10 rounded-lg flex items-center justify-center text-white" id="tool-eraser"><i class="fas fa-eraser"></i></button>
+                            <button onclick="clearCanvas()" class="w-10 h-10 rounded-lg flex items-center justify-center text-white hover:bg-red-500/20"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div class="flex gap-2" id="color-palette">
+                            <!-- Colors JS -->
+                        </div>
                     </div>
-                    <div class="currency-pill bg-indigo-100 text-indigo-600 border-indigo-200 px-4 py-2 rounded-xl font-black">
-                        <i class="fas fa-tint mr-2"></i> <span id="shop-ink">0</span>
+
+                    <!-- Word Selection Overlay -->
+                    <div id="overlay-selection" class="absolute inset-0 z-10 bg-indigo-600/95 flex flex-col items-center justify-center p-10 text-white hidden">
+                        <h2 class="font-game text-4xl mb-8">PICK A WORD</h2>
+                        <div id="word-choices" class="flex gap-4">
+                            <!-- Buttons JS -->
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex-1 flex overflow-hidden">
-                <!-- Shop Sidebar -->
-                <div class="w-64 bg-slate-50 p-6 flex flex-col gap-2 border-r border-slate-100">
-                    <button onclick="switchShopTab('avatars')" class="text-left p-4 rounded-xl font-bold text-slate-600 hover:bg-white hover:shadow-sm transition-all shop-tab active" data-tab="avatars">
-                        <i class="fas fa-smile mr-3"></i> Avatars
-                    </button>
-                    <button onclick="switchShopTab('hats')" class="text-left p-4 rounded-xl font-bold text-slate-600 hover:bg-white hover:shadow-sm transition-all shop-tab" data-tab="hats">
-                        <i class="fas fa-hat-cowboy mr-3"></i> Hats
-                    </button>
-                    <button onclick="switchShopTab('colors')" class="text-left p-4 rounded-xl font-bold text-slate-600 hover:bg-white hover:shadow-sm transition-all shop-tab" data-tab="colors">
-                        <i class="fas fa-palette mr-3"></i> Rare Colors
-                    </button>
+            <!-- Right Sidebar: Chat -->
+            <div class="w-80 glass-panel rounded-2xl flex flex-col overflow-hidden">
+                <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-1">
+                    <div class="text-slate-400 text-xs text-center italic my-4">Welcome to the Public Lobby! Guess the word to earn points.</div>
                 </div>
+                <form id="chat-form" class="p-4 bg-slate-50 border-t">
+                    <input type="text" id="chat-input" placeholder="Type your guess..." class="w-full p-3 rounded-xl border-2 border-slate-200 outline-none focus:border-indigo-500 font-bold shadow-sm" autocomplete="off">
+                </form>
+            </div>
+        </div>
+    </div>
 
-                <!-- Shop Grid -->
-                <div id="shop-grid" class="flex-1 p-8 overflow-y-auto grid grid-cols-3 gap-6 content-start">
-                    <!-- Items injected here -->
+    <!-- MODAL: Shop -->
+    <div id="modal-shop" class="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[32px] overflow-hidden shadow-2xl animate-pop">
+            <div class="p-8 border-b flex justify-between items-center bg-slate-50">
+                <h2 class="font-game text-3xl text-slate-800">Art Shop</h2>
+                <button onclick="toggleModal('modal-shop')" class="text-slate-400 hover:text-slate-800"><i class="fas fa-times text-2xl"></i></button>
+            </div>
+            <div class="p-8 grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+                <div class="p-6 border-2 border-indigo-100 rounded-2xl bg-indigo-50 flex items-center gap-4">
+                    <div class="text-4xl">👑</div>
+                    <div>
+                        <div class="font-bold">Rainbow Ink</div>
+                        <div class="text-xs text-indigo-500">500 Coins</div>
+                    </div>
+                </div>
+                <div class="p-6 border-2 border-slate-100 rounded-2xl grayscale flex items-center gap-4">
+                    <div class="text-4xl">🐱</div>
+                    <div>
+                        <div class="font-bold">Space Cat</div>
+                        <div class="text-xs text-slate-400">Locked</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ================================================================== -->
-    <!--                          JAVASCRIPT LOGIC                          -->
-    <!-- ================================================================== -->
     <script>
-        // --- CLIENT DATA STRUCTURE ---
-        const GameClient = {
-            socket: null,
-            user: {
-                username: "Guest",
-                wins: 0,
-                ink: 100,
-                level: 1,
-                inventory: {
-                    avatars: ['🐱'],
-                    accessories: [''],
-                    colors: ['#000000', '#EF4444', '#3B82F6', '#10B981', '#F59E0B']
-                },
-                equipped: {
-                    base: '🐱',
-                    accessory: '',
-                    pfp: null // Base64 if uploaded
-                }
-            },
-            game: {
-                id: null,
-                state: 'lobby', // lobby, playing
-                round: 1,
-                drawer: null
-            },
-            drawing: {
-                isDrawing: false,
-                tool: 'brush',
-                color: '#000000',
-                size: 8,
-                lastPos: { x: 0, y: 0 }
-            }
+        // --- CONFIG & STATE ---
+        const AVATARS = ['🐱', '🐶', '🦊', '🐸', '🐼', '🐨', '🐯', '🦁', '🐷', '🐵', '🦄', '🦖'];
+        const COLORS = ['#000000', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#6366F1', '#EC4899', '#FFFFFF'];
+        
+        let socket;
+        let myData = {
+            name: localStorage.getItem('sd_username') || 'Guest' + Math.floor(Math.random()*9000),
+            avatar: localStorage.getItem('sd_avatar') || '🐱'
         };
 
-        // --- SHOP DATA ---
-        const SHOP_ITEMS = {
-            avatars: [
-                { id: 'fox', item: '🦊', price: 50, type: 'ink' },
-                { id: 'robot', item: '🤖', price: 100, type: 'ink' },
-                { id: 'alien', item: '👽', price: 200, type: 'ink' },
-                { id: 'poop', item: '💩', price: 500, type: 'ink' },
-                { id: 'dragon', item: '🐲', price: 5, type: 'wins' }
-            ],
-            hats: [
-                { id: 'crown', item: '👑', price: 10, type: 'wins' },
-                { id: 'tophat', item: '🎩', price: 150, type: 'ink' },
-                { id: 'glasses', item: '🕶️', price: 100, type: 'ink' },
-                { id: 'bow', item: '🎀', price: 50, type: 'ink' }
-            ],
-            colors: [
-                { id: 'neon_pink', item: '#FF00FF', price: 200, type: 'ink' },
-                { id: 'gold', item: '#FFD700', price: 5, type: 'wins' },
-                { id: 'cyan', item: '#00FFFF', price: 150, type: 'ink' }
-            ]
-        };
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentBrush = { color: '#000000', size: 5, mode: 'pen' };
+        let gameStatus = 'menu';
 
-        // --- DOM ELEMENTS ---
-        const canvas = document.getElementById('main-canvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
-        const wrapper = document.getElementById('canvas-wrapper');
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
 
         // --- INITIALIZATION ---
-        window.onload = () => {
-            loadUserData();
-            initUI();
-            setupSocket();
+        window.addEventListener('load', () => {
+            setupMenu();
             resizeCanvas();
-        };
+            initSocket();
+            setupDrawing();
+        });
 
-        // --- PERSISTENCE ---
-        function loadUserData() {
-            const saved = localStorage.getItem('sketchdash_user_v1');
-            if (saved) {
-                const data = JSON.parse(saved);
-                // Merge saved data with default structure to prevent errors on updates
-                GameClient.user = { ...GameClient.user, ...data };
-                updateMenuUI();
-            }
-        }
+        window.addEventListener('resize', resizeCanvas);
 
-        function saveUserData() {
-            localStorage.setItem('sketchdash_user_v1', JSON.stringify(GameClient.user));
-            updateMenuUI();
-        }
-
-        function updateMenuUI() {
-            // Update Menu
-            document.getElementById('input-username').value = GameClient.user.username;
-            document.getElementById('display-wins').innerText = GameClient.user.wins;
-            document.getElementById('display-ink').innerText = GameClient.user.ink;
-            document.getElementById('shop-wins').innerText = GameClient.user.wins;
-            document.getElementById('shop-ink').innerText = GameClient.user.ink;
-
-            // Update Avatar Preview
-            document.getElementById('menu-avatar-emoji').innerText = GameClient.user.equipped.base;
-            document.getElementById('menu-accessory').innerText = GameClient.user.equipped.accessory;
+        function setupMenu() {
+            const grid = document.getElementById('avatar-grid');
+            const nameInput = document.getElementById('input-username');
+            nameInput.value = myData.name;
             
-            // Calc Rank
-            const wins = GameClient.user.wins;
-            let rank = "NOVICE";
-            let color = "var(--rank-novice)";
-            if (wins >= 10) { rank = "ROOKIE"; color = "var(--rank-rookie)"; }
-            if (wins >= 50) { rank = "ARTIST"; color = "var(--rank-artist)"; }
-            if (wins >= 100) { rank = "MASTER"; color = "var(--rank-master)"; }
-            
-            const badge = document.getElementById('menu-rank-badge');
-            badge.innerText = rank;
-            badge.style.backgroundColor = color;
-            badge.style.color = "white";
-        }
-
-        // --- CANVAS ENGINE ---
-        function resizeCanvas() {
-            const rect = wrapper.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            
-            // Redraw background
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-        }
-        window.onresize = resizeCanvas;
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-            const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-            return { x, y };
-        }
-
-        function startStroke(e) {
-            if (GameClient.game.drawer !== GameClient.socket.id) return;
-            GameClient.drawing.isDrawing = true;
-            GameClient.drawing.lastPos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(GameClient.drawing.lastPos.x, GameClient.drawing.lastPos.y);
-        }
-
-        function moveStroke(e) {
-            if (!GameClient.drawing.isDrawing) return;
-            const pos = getPos(e);
-            const strokeData = {
-                from: GameClient.drawing.lastPos,
-                to: pos,
-                color: GameClient.drawing.tool === 'eraser' ? '#FFFFFF' : GameClient.drawing.color,
-                size: GameClient.drawing.tool === 'eraser' ? 40 : GameClient.drawing.size
-            };
-            
-            draw(strokeData);
-            GameClient.socket.emit('draw_stroke', strokeData);
-            GameClient.drawing.lastPos = pos;
-            if(e.cancelable) e.preventDefault();
-        }
-
-        function endStroke() { GameClient.drawing.isDrawing = false; }
-
-        function draw(s) {
-            ctx.beginPath();
-            ctx.strokeStyle = s.color;
-            ctx.lineWidth = s.size;
-            ctx.moveTo(s.from.x, s.from.y);
-            ctx.lineTo(s.to.x, s.to.y);
-            ctx.stroke();
-            ctx.closePath();
-        }
-
-        // Events
-        canvas.addEventListener('mousedown', startStroke);
-        window.addEventListener('mousemove', moveStroke);
-        window.addEventListener('mouseup', endStroke);
-        canvas.addEventListener('touchstart', startStroke, {passive: false});
-        canvas.addEventListener('touchmove', moveStroke, {passive: false});
-        window.addEventListener('touchend', endStroke);
-
-        // --- SHOP LOGIC ---
-        function openShop() {
-            const modal = document.getElementById('modal-shop');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.add('opacity-100');
-                document.getElementById('shop-content').classList.remove('scale-95');
-                document.getElementById('shop-content').classList.add('scale-100');
-            }, 10);
-            switchShopTab('avatars');
-        }
-
-        function closeModal(id) {
-            const modal = document.getElementById(id);
-            modal.classList.remove('opacity-100');
-            if (id === 'modal-shop') {
-                document.getElementById('shop-content').classList.add('scale-95');
-                document.getElementById('shop-content').classList.remove('scale-100');
-            }
-            setTimeout(() => modal.classList.add('hidden'), 300);
-        }
-
-        function switchShopTab(category) {
-            // Update tabs
-            document.querySelectorAll('.shop-tab').forEach(t => {
-                t.classList.remove('bg-indigo-50', 'text-indigo-600');
-                if(t.dataset.tab === category) t.classList.add('bg-indigo-50', 'text-indigo-600');
-            });
-
-            // Render Items
-            const grid = document.getElementById('shop-grid');
-            grid.innerHTML = SHOP_ITEMS[category].map(item => {
-                let isOwned = false;
-                if (category === 'avatars') isOwned = GameClient.user.inventory.avatars.includes(item.item);
-                if (category === 'hats') isOwned = GameClient.user.inventory.accessories.includes(item.item);
-                if (category === 'colors') isOwned = GameClient.user.inventory.colors.includes(item.item);
-
-                const priceClass = item.type === 'wins' ? 'bg-yellow-100 text-yellow-600 border-yellow-200' : 'bg-indigo-100 text-indigo-600 border-indigo-200';
-                const icon = item.type === 'wins' ? 'trophy' : 'tint';
-
-                return `
-                    <div class="shop-item ${isOwned ? 'owned' : ''}" onclick="buyItem('${category}', '${item.id}')">
-                        <div class="text-5xl mb-2">${category === 'colors' ? `<div class="w-12 h-12 rounded-full border-2 border-slate-200" style="background:${item.item}"></div>` : item.item}</div>
-                        ${isOwned 
-                            ? `<div class="bg-green-100 text-green-600 px-3 py-1 rounded-lg font-bold text-xs">OWNED</div>`
-                            : `<div class="${priceClass} px-3 py-1 rounded-lg font-bold text-xs border flex items-center gap-2"><i class="fas fa-${icon}"></i> ${item.price}</div>`
-                        }
-                        ${!isOwned ? `<button class="btn-shop-buy mt-auto">BUY</button>` : `<button class="w-full mt-auto py-2 text-xs font-bold text-green-600 bg-green-50 rounded-lg">EQUIP</button>`}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function buyItem(category, itemId) {
-            const item = SHOP_ITEMS[category].find(i => i.id === itemId);
-            if (!item) return;
-
-            // Check Ownership
-            let ownedList;
-            if (category === 'avatars') ownedList = GameClient.user.inventory.avatars;
-            if (category === 'hats') ownedList = GameClient.user.inventory.accessories;
-            if (category === 'colors') ownedList = GameClient.user.inventory.colors;
-
-            if (ownedList.includes(item.item)) {
-                // Equip Logic
-                if (category === 'avatars') GameClient.user.equipped.base = item.item;
-                if (category === 'hats') GameClient.user.equipped.accessory = item.item;
-                if (category === 'colors') {
-                    // Colors just get added to palette, no "equip" needed
-                    alert("Color is available in your palette!");
-                    return; 
-                }
-                saveUserData();
-                switchShopTab(category); // Re-render to show equip state
-                return;
-            }
-
-            // Purchase Logic
-            if (item.type === 'wins') {
-                if (GameClient.user.wins >= item.price) {
-                    GameClient.user.wins -= item.price;
-                    ownedList.push(item.item);
-                    saveUserData();
-                    switchShopTab(category);
-                } else {
-                    alert("Not enough Wins!");
-                }
-            } else {
-                if (GameClient.user.ink >= item.price) {
-                    GameClient.user.ink -= item.price;
-                    ownedList.push(item.item);
-                    saveUserData();
-                    switchShopTab(category);
-                } else {
-                    alert("Not enough Ink!");
-                }
-            }
-        }
-
-        // --- GAME LOGIC ---
-        function setupSocket() {
-            GameClient.socket = io();
-
-            GameClient.socket.on('player_list_update', (players) => {
-                const list = document.getElementById('ui-players');
-                list.innerHTML = players.sort((a,b) => b.score - a.score).map(p => `
-                    <div class="player-card flex items-center gap-3 p-3 mb-2 rounded-2xl bg-white shadow-sm border border-slate-100 ${p.id === GameClient.game.drawer ? 'border-indigo-400 bg-indigo-50/30' : ''}">
-                        <div class="relative w-10 h-10 shrink-0">
-                            <div class="w-full h-full bg-slate-100 rounded-xl flex items-center justify-center text-xl">${p.base}</div>
-                            <span class="absolute -top-2 -right-2 text-sm">${p.accessory}</span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="font-bold text-slate-800 text-sm truncate">${p.name}</p>
-                            <p class="text-[10px] font-black text-indigo-500 uppercase">${p.score} PTS</p>
-                        </div>
-                        ${p.hasGuessed ? '<div class="text-green-500">✅</div>' : ''}
-                    </div>
-                `).join('');
-            });
-
-            GameClient.socket.on('game_state_update', (gs) => {
-                GameClient.game.drawer = gs.drawerId;
-                GameClient.game.state = gs.status;
-                
-                // Update Header
-                document.getElementById('ui-timer').innerText = gs.timer;
-                document.getElementById('ui-round').innerText = `${gs.round}/10`;
-
-                // Show/Hide Tools
-                const isDrawer = gs.drawerId === GameClient.socket.id;
-                document.getElementById('draw-tools').classList.toggle('hidden', !isDrawer || gs.status !== 'active');
-                
-                // Show/Hide Overlays
-                document.getElementById('overlay-waiting').classList.toggle('hidden', gs.status !== 'waiting');
-                document.getElementById('overlay-picking').classList.toggle('hidden', gs.drawerId !== GameClient.socket.id || gs.status !== 'selecting');
-                document.getElementById('overlay-results').classList.toggle('hidden', gs.status !== 'intermission');
-
-                // Render Words
-                const wordBox = document.getElementById('ui-word-box');
-                const display = (isDrawer || gs.status === 'intermission' || gs.winners.includes(GameClient.socket.id)) ? gs.currentWord : gs.currentWord.replace(/[A-Z]/g, '_');
-                
-                wordBox.innerHTML = display.split('').map(c => `
-                    <span class="w-8 h-10 flex items-center justify-center font-game text-2xl ${c === '_' ? 'border-b-4 border-slate-300' : 'text-indigo-600'}">${c === '_' ? '' : c}</span>
-                `).join('');
-
-                // Word Selection Buttons
-                if (gs.status === 'selecting' && isDrawer) {
-                    document.getElementById('word-options').innerHTML = gs.wordChoices.map(w => `
-                        <button onclick="GameClient.socket.emit('word_selected', '${w}')" class="px-8 py-4 bg-white text-indigo-600 font-game text-xl rounded-2xl neo-btn shadow-sm hover:scale-105 transition">${w}</button>
-                    `).join('');
-                }
-
-                // Results Screen
-                if (gs.status === 'intermission') {
-                    document.getElementById('res-word').innerText = gs.currentWord;
-                    const winnerId = gs.winners[0];
-                    // Logic to find winner name would happen here
-                    ctx.clearRect(0,0,canvas.width, canvas.height);
-                }
-            });
-
-            GameClient.socket.on('remote_draw', (s) => draw(s));
-            GameClient.socket.on('remote_clear', () => ctx.clearRect(0,0,canvas.width, canvas.height));
-            
-            GameClient.socket.on('correct_guess', (data) => {
-                const feed = document.getElementById('chat-messages');
-                const msg = document.createElement('div');
-                msg.className = "p-3 bg-green-50 text-green-600 border border-green-200 rounded-xl text-center font-bold text-xs animate-bounce-in";
-                msg.innerHTML = `🎉 ${data.playerName} got it!`;
-                feed.appendChild(msg);
-                feed.scrollTop = feed.scrollHeight;
-                
-                // If I guessed it, award Ink
-                if (data.playerId === GameClient.socket.id) {
-                    GameClient.user.ink += 20; // 20 Ink per correct guess
-                    saveUserData();
-                }
-            });
-
-            GameClient.socket.on('game_win', (winnerId) => {
-                if (winnerId === GameClient.socket.id) {
-                    GameClient.user.wins += 1;
-                    GameClient.user.ink += 100; // Bonus for winning game
-                    saveUserData();
-                    alert("VICTORY! You earned 1 Win and 100 Ink!");
-                }
-            });
-            
-            GameClient.socket.on('new_message', (m) => {
-                const feed = document.getElementById('chat-messages');
+            AVATARS.forEach(emoji => {
                 const div = document.createElement('div');
-                div.className = "p-2 bg-slate-50 rounded-lg text-xs font-bold mb-2 break-words";
-                div.innerHTML = `<span class="text-indigo-500 uppercase mr-1">${m.user}:</span>${m.text}`;
-                feed.appendChild(div);
-                feed.scrollTop = feed.scrollHeight;
+                div.className = `avatar-slot ${emoji === myData.avatar ? 'active' : ''}`;
+                div.innerText = emoji;
+                div.onclick = () => {
+                    myData.avatar = emoji;
+                    localStorage.setItem('sd_avatar', emoji);
+                    document.querySelectorAll('.avatar-slot').forEach(s => s.classList.remove('active'));
+                    div.classList.add('active');
+                    document.getElementById('active-avatar').innerText = emoji;
+                };
+                grid.appendChild(div);
+            });
+
+            nameInput.oninput = (e) => {
+                myData.name = e.target.value;
+                localStorage.setItem('sd_username', myData.name);
+            };
+
+            const palette = document.getElementById('color-palette');
+            COLORS.forEach(color => {
+                const btn = document.createElement('button');
+                btn.className = 'w-8 h-8 rounded-lg border-2 border-slate-700 transition-transform hover:scale-110';
+                btn.style.backgroundColor = color;
+                btn.onclick = () => setBrushColor(color);
+                palette.appendChild(btn);
             });
         }
 
-        // --- GAME ACTIONS ---
-        function startGame() {
-            const name = document.getElementById('input-username').value.trim();
-            if(!name) return;
-            GameClient.user.username = name;
-            saveUserData();
+        function initSocket() {
+            // Placeholder: In a real environment, you'd provide the server URL
+            socket = io();
 
-            GameClient.socket.emit('join_game', {
-                name: GameClient.user.username,
-                base: GameClient.user.equipped.base,
-                accessory: GameClient.user.equipped.accessory,
-                pfp: GameClient.user.equipped.pfp
+            socket.on('connect', () => {
+                console.log("Connected to Public Lobby");
             });
 
+            socket.on('player_list_update', updatePlayerList);
+            socket.on('game_state_update', syncGameState);
+            socket.on('timer_update', (time) => {
+                document.getElementById('timer-display').innerText = time;
+                if(time < 10) document.getElementById('timer-display').classList.add('text-red-500');
+                else document.getElementById('timer-display').classList.remove('text-red-500');
+            });
+
+            socket.on('remote_draw', (data) => {
+                drawOnCanvas(data.x1, data.y1, data.x2, data.y2, data.color, data.size);
+            });
+
+            socket.on('remote_clear', () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+
+            socket.on('new_message', addChatMessage);
+            socket.on('correct_guess', (data) => {
+                addChatMessage({ user: 'SYSTEM', text: `${data.playerName} guessed the word!`, type: 'success' });
+            });
+        }
+
+        // --- CORE ACTIONS ---
+        function joinPublicGame() {
+            if(!myData.name.trim()) return alert("Please enter a name");
+            
             document.getElementById('screen-menu').classList.add('hidden');
             document.getElementById('screen-game').classList.remove('hidden');
-            resizeCanvas();
+            
+            socket.emit('join_game', myData);
+            gameStatus = 'game';
         }
 
-        function setTool(t) {
-            GameClient.drawing.tool = t;
-            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`[data-tool="${t}"]`).classList.add('active');
-        }
-
-        function clearCanvas() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            GameClient.socket.emit('clear_canvas');
-        }
-
-        function exitGame() {
+        function leaveGame() {
             location.reload();
         }
 
-        // Chat Input
-        document.getElementById('chat-input').onkeypress = (e) => {
-            if(e.key === 'Enter') {
-                const val = e.target.value.trim();
-                if(val) GameClient.socket.emit('send_message', val);
-                e.target.value = '';
+        function updatePlayerList(players) {
+            const list = document.getElementById('player-list');
+            list.innerHTML = '';
+            players.sort((a,b) => b.score - a.score).forEach((p, index) => {
+                const div = document.createElement('div');
+                div.className = `flex items-center gap-3 p-3 rounded-xl ${p.id === socket.id ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'bg-white shadow-sm'}`;
+                div.innerHTML = `
+                    <div class="text-2xl">${p.avatar}</div>
+                    <div class="flex-1 overflow-hidden">
+                        <div class="font-bold text-sm truncate">${p.name} ${p.id === socket.id ? '(You)' : ''}</div>
+                        <div class="text-xs text-slate-400 font-black">${p.score} PTS</div>
+                    </div>
+                    ${p.hasGuessed ? '<i class="fas fa-check-circle text-green-500"></i>' : ''}
+                `;
+                list.appendChild(div);
+            });
+            document.getElementById('player-count').innerText = players.length;
+        }
+
+        function syncGameState(state) {
+            const isDrawer = state.drawerId === socket.id;
+            
+            // UI visibility based on drawer
+            document.getElementById('drawing-tools').style.display = (isDrawer && state.status === 'active') ? 'flex' : 'none';
+            document.getElementById('overlay-selection').style.display = (isDrawer && state.status === 'selecting') ? 'flex' : 'none';
+            
+            // Word display logic
+            const wordBox = document.getElementById('word-display');
+            if (isDrawer) {
+                wordBox.innerText = state.currentWord || 'SELECTING...';
+                wordBox.classList.add('text-indigo-600');
+            } else {
+                wordBox.innerText = state.status === 'active' ? state.currentWord.replace(/[A-Z]/g, '_ ') : 'WAITING...';
+                wordBox.classList.remove('text-indigo-600');
+            }
+
+            // Word Selection Buttons
+            if (isDrawer && state.status === 'selecting') {
+                const btnContainer = document.getElementById('word-choices');
+                btnContainer.innerHTML = '';
+                state.wordChoices.forEach(word => {
+                    const btn = document.createElement('button');
+                    btn.className = "px-8 py-4 bg-white text-indigo-600 rounded-2xl font-game text-xl hover:bg-indigo-50 transition-all";
+                    btn.innerText = word;
+                    btn.onclick = () => socket.emit('word_selected', word);
+                    btnContainer.appendChild(btn);
+                });
+            }
+
+            document.getElementById('round-display').innerText = `${state.round} / 10`;
+        }
+
+        // --- DRAWING ENGINE ---
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            if (!container) return;
+            // Save contents
+            const temp = ctx.getImageData(0,0, canvas.width, canvas.height);
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            ctx.putImageData(temp, 0, 0);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+
+        function setupDrawing() {
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', drawing);
+            canvas.addEventListener('mouseup', stopDraw);
+            canvas.addEventListener('mouseleave', stopDraw);
+            
+            canvas.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                startDraw({ offsetX: touch.clientX - canvas.offsetLeft, offsetY: touch.clientY - canvas.offsetTop });
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                drawing({ offsetX: touch.clientX - canvas.offsetLeft, offsetY: touch.clientY - canvas.offsetTop });
+            });
+        }
+
+        function startDraw(e) {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        }
+
+        function drawing(e) {
+            if (!isDrawing) return;
+            
+            const x = e.offsetX;
+            const y = e.offsetY;
+
+            // Only emit if drawer
+            // Logic handled by server as well, but client side check for responsiveness
+            socket.emit('draw_stroke', {
+                x1: lastX, y1: lastY,
+                x2: x, y2: y,
+                color: currentBrush.mode === 'eraser' ? '#FFFFFF' : currentBrush.color,
+                size: currentBrush.size
+            });
+
+            drawOnCanvas(lastX, lastY, x, y, currentBrush.mode === 'eraser' ? '#FFFFFF' : currentBrush.color, currentBrush.size);
+            [lastX, lastY] = [x, y];
+        }
+
+        function drawOnCanvas(x1, y1, x2, y2, color, size) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        function stopDraw() { isDrawing = false; }
+
+        function setBrushColor(color) {
+            currentBrush.color = color;
+            currentBrush.mode = 'pen';
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tool-pen').classList.add('active');
+        }
+
+        function setTool(mode) {
+            currentBrush.mode = mode;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tool-${mode}`).classList.add('active');
+        }
+
+        function clearCanvas() {
+            socket.emit('clear_canvas');
+        }
+
+        // --- CHAT ---
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatBox = document.getElementById('chat-box');
+
+        chatForm.onsubmit = (e) => {
+            e.preventDefault();
+            const val = chatInput.value.trim();
+            if (val) {
+                socket.emit('send_message', val);
+                chatInput.value = '';
             }
         };
 
-        // Init UI
-        function initUI() {
-            // Render Palette based on inventory
-            const pCont = document.getElementById('palette');
-            GameClient.user.inventory.colors.forEach(c => {
-                const d = document.createElement('div');
-                d.className = "color-dot";
-                d.style.backgroundColor = c;
-                d.onclick = () => {
-                    GameClient.drawing.color = c;
-                    document.querySelectorAll('.color-dot').forEach(x => x.classList.remove('selected'));
-                    d.classList.add('selected');
-                };
-                pCont.appendChild(d);
-            });
-            // Setup default active color
-            pCont.firstChild.classList.add('selected');
+        function addChatMessage(data) {
+            const div = document.createElement('div');
+            if (data.type === 'success') {
+                div.className = 'message correct-guess';
+                div.innerText = data.text;
+            } else {
+                div.className = 'message bg-slate-100';
+                div.innerHTML = `<span class="font-black text-slate-700">${data.user}:</span> <span class="text-slate-600">${data.text}</span>`;
+            }
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
 
-            // Setup Brush Size
-            const sizeIn = document.getElementById('brush-size');
-            sizeIn.oninput = (e) => {
-                GameClient.drawing.size = parseInt(e.target.value);
-                document.getElementById('size-val').innerText = `${GameClient.drawing.size}px`;
-            };
+        function toggleModal(id) {
+            const m = document.getElementById(id);
+            m.classList.toggle('hidden');
         }
     </script>
 </body>
