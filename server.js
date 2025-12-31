@@ -16,13 +16,8 @@ if (!fs.existsSync(uploadDir)){
 
 // --- FILE STORAGE CONFIG ---
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'public/uploads/');
-    },
-    filename: (req, file, cb) => {
-        // Keeps original extension and adds a timestamp to prevent overwriting
-        cb(null, Date.now() + '-' + file.originalname);
-    }
+    destination: (req, file, cb) => { cb(null, 'public/uploads/'); },
+    filename: (req, file, cb) => { cb(null, Date.now() + '-' + file.originalname); }
 });
 const upload = multer({ storage: storage });
 
@@ -53,14 +48,19 @@ const VideoSchema = new mongoose.Schema({
     username: String,
     videoUrl: String,
     caption: String,
-    likes: { type: Number, default: 0 },
+    likes: { type: Array, default: [] }, // Changed to Array to store usernames of people who liked
+    comments: [{
+        username: String,
+        text: String,
+        createdAt: { type: Date, default: Date.now }
+    }],
     createdAt: { type: Date, default: Date.now }
 });
 
 const NotificationSchema = new mongoose.Schema({
     toUser: String,
     fromUser: String,
-    type: String,
+    type: String, // "follow", "like", "comment"
     message: String,
     createdAt: { type: Date, default: Date.now }
 });
@@ -71,41 +71,85 @@ const Notification = mongoose.model('Notification', NotificationSchema);
 
 // --- ROUTES ---
 
-// 1. Upload Video (Handles the actual file)
+// 1. Upload Video
 app.post('/api/upload', upload.single('videoFile'), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-        
+        if (!req.file) return res.status(400).json({ error: "No file" });
         const { username, caption } = req.body;
-        const videoUrl = `/uploads/${req.file.filename}`;
-        
-        const newVideo = new Video({ username, videoUrl, caption });
+        const newVideo = new Video({ username, videoUrl: `/uploads/${req.file.filename}`, caption });
         await newVideo.save();
         res.status(201).json(newVideo);
-    } catch (err) {
-        res.status(500).json({ error: "Upload logic failed: " + err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 2. Profile Fetch (Crucial for profile.html)
+// 2. Like/Unlike Video
+app.post('/api/videos/:id/like', async (req, res) => {
+    try {
+        const { username } = req.body;
+        const video = await Video.findById(req.params.id);
+        const videoOwner = video.username;
+
+        if (video.likes.includes(username)) {
+            // UNLIKE
+            video.likes = video.likes.filter(name => name !== username);
+            await User.findOneAndUpdate({ username: videoOwner }, { $inc: { totalLikes: -1 } });
+        } else {
+            // LIKE
+            video.likes.push(username);
+            await User.findOneAndUpdate({ username: videoOwner }, { $inc: { totalLikes: 1 } });
+            
+            // Notification
+            if (username !== videoOwner) {
+                const notif = new Notification({
+                    toUser: videoOwner,
+                    fromUser: username,
+                    type: "like",
+                    message: `${username} liked your video!`
+                });
+                await notif.save();
+            }
+        }
+        await video.save();
+        res.json({ likes: video.likes.length, isLiked: video.likes.includes(username) });
+    } catch (err) { res.status(500).json({ error: "Like failed" }); }
+});
+
+// 3. Comment on Video
+app.post('/api/videos/:id/comment', async (req, res) => {
+    try {
+        const { username, text } = req.body;
+        const video = await Video.findById(req.params.id);
+        
+        const newComment = { username, text };
+        video.comments.push(newComment);
+        await video.save();
+
+        if (username !== video.username) {
+            const notif = new Notification({
+                toUser: video.username,
+                fromUser: username,
+                type: "comment",
+                message: `${username} commented: ${text.substring(0, 20)}...`
+            });
+            await notif.save();
+        }
+        res.json(video.comments);
+    } catch (err) { res.status(500).json({ error: "Comment failed" }); }
+});
+
+// 4. Profile Fetch
 app.get('/api/profile/:username', async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username });
-        if (!user) return res.status(404).json({ error: "User not found" });
-
         const videos = await Video.find({ username: req.params.username }).sort({ createdAt: -1 });
         res.json({ user, videos });
-    } catch (err) {
-        res.status(500).json({ error: "Database error fetching profile" });
-    }
+    } catch (err) { res.status(500).json({ error: "Profile error" }); }
 });
 
-// 3. Follow System
+// 5. Follow System
 app.post('/api/follow', async (req, res) => {
     try {
         const { currentUser, targetUser } = req.body;
-        if (currentUser === targetUser) return res.status(400).json({ error: "Self-follow blocked" });
-
         await User.findOneAndUpdate({ username: currentUser }, { $addToSet: { following: targetUser } });
         await User.findOneAndUpdate({ username: targetUser }, { $addToSet: { followers: currentUser } });
 
@@ -116,31 +160,31 @@ app.post('/api/follow', async (req, res) => {
             message: `${currentUser} started following you!`
         });
         await notif.save();
-
         res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: "Follow system error" });
-    }
-});
+    } catch (err) { res.status(500).json({ error: "Follow error" }); }
+} );
 
-// 4. Other Standard Routes
+// 6. Standard Auth/Feed
 app.post('/api/signup', async (req, res) => {
-    try {
-        const newUser = new User(req.body);
-        await newUser.save();
-        res.status(201).json({ user: { username: newUser.username } });
-    } catch (err) { res.status(400).json({ error: "Signup error" }); }
+    const newUser = new User(req.body);
+    await newUser.save();
+    res.status(201).json({ user: { username: newUser.username } });
 });
 
 app.post('/api/login', async (req, res) => {
     const user = await User.findOne({ email: req.body.email, password: req.body.password });
     if (user) res.json({ username: user.username });
-    else res.status(401).json({ error: "Invalid login" });
+    else res.status(401).json({ error: "Invalid" });
 });
 
 app.get('/api/videos', async (req, res) => {
     const videos = await Video.find().sort({ createdAt: -1 });
     res.json(videos);
+});
+
+app.get('/api/notifications/:username', async (req, res) => {
+    const notifs = await Notification.find({ toUser: req.params.username }).sort({ createdAt: -1 });
+    res.json(notifs);
 });
 
 app.listen(PORT, () => console.log(`📡 VikVok Live on Port ${PORT}`));
