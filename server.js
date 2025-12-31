@@ -22,16 +22,16 @@ const MAX_ROUNDS = 10;
 const INTERMISSION_TIME = 5;
 
 // --- STATE MANAGEMENT ---
-let players = {}; // { socketId: { name, base, accessory, pfp, score, id } }
+let players = {}; 
 let drawerQueue = [];
 let gameState = {
-    status: 'waiting', // waiting, selecting, active, intermission, game_over
+    status: 'waiting', 
     round: 1,
     currentWord: '',
     wordChoices: [],
     drawerId: null,
     timer: ROUND_TIME,
-    winners: []
+    winners: [] 
 };
 let timerInterval = null;
 
