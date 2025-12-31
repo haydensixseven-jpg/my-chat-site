@@ -80,7 +80,7 @@
         /* --- ENGAGEMENT --- */
         .engagement-bar { position: absolute; right: 15px; bottom: 100px; display: flex; flex-direction: column; gap: 20px; align-items: center; z-index: 10; }
         .action-btn { background: rgba(255,255,255,0.1); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; color: white; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
-        .action-btn:hover { background: var(--primary-violet); }
+        .action-btn.liked { color: var(--red-like); border-color: var(--red-like); background: rgba(255, 59, 92, 0.1); }
         .action-label { font-size: 0.75rem; font-weight: 700; margin-top: -15px; margin-bottom: 5px; }
 
         /* MODAL */
@@ -189,58 +189,43 @@
             setTimeout(() => document.getElementById('custom-alert').classList.remove('active'), 3000);
         }
 
-        // --- CHECK LOGIN STATUS ---
         window.onload = () => {
             const user = localStorage.getItem('vikvok_u');
             if(user) enterDash(user);
         };
 
-        function goHome() {
-            loadFeed();
-            triggerAlert("Refreshed");
-        }
+        function goHome() { loadFeed(); triggerAlert("Refreshed"); }
+        function logout() { localStorage.removeItem('vikvok_u'); location.reload(); }
 
-        function logout() {
-            localStorage.removeItem('vikvok_u');
-            location.reload();
-        }
-
-        // --- AUTH LOGIC ---
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const payload = {
-                username: document.getElementById('up-user').value,
-                email: document.getElementById('up-email').value,
-                password: document.getElementById('up-pass').value
-            };
             const res = await fetch('/api/signup', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    username: document.getElementById('up-user').value,
+                    email: document.getElementById('up-email').value,
+                    password: document.getElementById('up-pass').value
+                })
             });
             const data = await res.json();
-            if(res.ok) {
-                localStorage.setItem('vikvok_u', data.user.username);
-                enterDash(data.user.username);
-            } else triggerAlert(data.error);
+            if(res.ok) { localStorage.setItem('vikvok_u', data.user.username); enterDash(data.user.username); }
+            else triggerAlert(data.error);
         });
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const payload = {
-                email: document.getElementById('in-email').value,
-                password: document.getElementById('in-pass').value
-            };
             const res = await fetch('/api/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    email: document.getElementById('in-email').value,
+                    password: document.getElementById('in-pass').value
+                })
             });
             const data = await res.json();
-            if(res.ok) {
-                localStorage.setItem('vikvok_u', data.username);
-                enterDash(data.username);
-            } else triggerAlert(data.error);
+            if(res.ok) { localStorage.setItem('vikvok_u', data.username); enterDash(data.username); }
+            else triggerAlert(data.error);
         });
 
         function enterDash(user) {
@@ -251,22 +236,34 @@
             loadFeed();
         }
 
-        // --- FEED & VIDEO HANDLING ---
         async function loadFeed() {
             const res = await fetch('/api/videos');
             const videos = await res.json();
+            const currentU = localStorage.getItem('vikvok_u');
             const feed = document.getElementById('feed');
             feed.innerHTML = '';
+            
             videos.forEach(v => {
+                const isLiked = v.likes.includes(currentU);
                 const card = document.createElement('div');
                 card.className = 'video-card';
                 card.innerHTML = `
                     <div class="video-wrapper">
                         <video class="main-player" loop src="${v.videoUrl}"></video>
                         <div class="engagement-bar">
-                            <div class="action-btn" onclick="likeVideo('${v._id}', this)"><i class="ri-heart-3-fill"></i></div>
-                            <span class="action-label">${v.likes}</span>
-                            <div class="action-btn" onclick="window.location.href='profile.html?u=${v.username}'"><i class="ri-user-follow-line"></i></div>
+                            <div class="action-btn ${isLiked ? 'liked' : ''}" onclick="likeVideo('${v._id}', this)">
+                                <i class="ri-heart-3-fill"></i>
+                            </div>
+                            <span class="action-label">${v.likes.length}</span>
+                            
+                            <div class="action-btn" onclick="addComment('${v._id}')">
+                                <i class="ri-chat-3-fill"></i>
+                            </div>
+                            <span class="action-label">${v.comments.length}</span>
+
+                            <div class="action-btn" onclick="window.location.href='profile.html?u=${v.username}'">
+                                <i class="ri-user-follow-line"></i>
+                            </div>
                             <span class="action-label">Profile</span>
                         </div>
                         <div class="controls-overlay">
@@ -286,17 +283,39 @@
             });
         }
 
-        // --- FILE UPLOAD ---
+        async function likeVideo(id, btn) {
+            const username = localStorage.getItem('vikvok_u');
+            const res = await fetch(`/api/videos/${id}/like`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                btn.classList.toggle('liked', data.isLiked);
+                btn.nextElementSibling.innerText = data.likes;
+            }
+        }
+
+        async function addComment(id) {
+            const text = prompt("Write your comment:");
+            if(!text) return;
+            const username = localStorage.getItem('vikvok_u');
+            const res = await fetch(`/api/videos/${id}/comment`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, text })
+            });
+            if(res.ok) { triggerAlert("Comment posted!"); loadFeed(); }
+        }
+
         async function uploadVideo() {
             const fileInput = document.getElementById('v-file');
             const capInput = document.getElementById('v-cap');
             const btn = document.getElementById('upload-btn');
+            if(!fileInput.files[0]) return triggerAlert("Choose a file!");
 
-            if(!fileInput.files[0]) return triggerAlert("Choose a file first!");
-
-            btn.disabled = true;
-            btn.innerText = "Processing...";
-
+            btn.disabled = true; btn.innerText = "Processing...";
             const formData = new FormData();
             formData.append('videoFile', fileInput.files[0]);
             formData.append('username', localStorage.getItem('vikvok_u'));
@@ -304,21 +323,12 @@
 
             try {
                 const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                if(res.ok) {
-                    toggleModal(false);
-                    loadFeed();
-                    triggerAlert("Video Live!");
-                } else triggerAlert("Upload Error");
-            } catch (err) {
-                triggerAlert("Server timeout");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Publish Now";
-            }
+                if(res.ok) { toggleModal(false); loadFeed(); triggerAlert("Video Live!"); }
+            } catch (err) { triggerAlert("Upload Error"); }
+            finally { btn.disabled = false; btn.innerText = "Publish Now"; }
         }
 
         function toggleModal(s) { document.getElementById('upload-modal').style.display = s ? 'flex' : 'none'; }
-
         function toggleNotifs() {
             const p = document.getElementById('notif-panel');
             const isVisible = p.style.display === 'flex';
