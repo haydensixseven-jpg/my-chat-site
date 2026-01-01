@@ -1,16 +1,27 @@
 {
-  "name": "vikvok-live",
-  "version": "1.0.0",
-  "description": "Infinite Flow Live Video Platform",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "install-deps": "npm install"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.0.0",
-    "cors": "^2.8.5",
-    "multer": "^1.4.5-lts.1"
-  }
+"name": "live-contacts-app",
+"private": true,
+"version": "1.0.0",
+"type": "module",
+"scripts": {
+"dev": "vite",
+"build": "vite build",
+"lint": "eslint .",
+"preview": "vite preview"
+},
+"dependencies": {
+"react": "^18.3.1",
+"react-dom": "^18.3.1",
+"firebase": "^11.1.0",
+"lucide-react": "^0.454.0",
+"clsx": "^2.1.1",
+"tailwind-merge": "^2.5.4"
+},
+"devDependencies": {
+"@vitejs/plugin-react": "^4.3.1",
+"autoprefixer": "^10.4.20",
+"postcss": "^8.4.47",
+"tailwindcss": "^3.4.13",
+"vite": "^5.4.8"
+}
 }
