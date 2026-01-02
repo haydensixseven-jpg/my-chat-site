@@ -24,6 +24,22 @@
             from { transform: translateY(100%) translateX(-50%); opacity: 0; }
             to { transform: translateY(0) translateX(-50%); opacity: 1; }
         }
+
+        /* Dropdown Animation */
+        .dropdown-animate {
+            transform-origin: top left;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease;
+        }
+        .dropdown-hidden {
+            transform: scale(0.95);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .dropdown-show {
+            transform: scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body id="main-body" class="bg-slate-900 text-white min-h-screen flex flex-col font-sans">
@@ -44,7 +60,33 @@
     <div id="chat-section" class="flex flex-grow flex-col h-screen max-h-screen overflow-hidden">
         <header id="chat-header" class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center shadow-lg">
             <div class="flex items-center gap-3">
-                <div id="app-logo" class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-xl text-white shadow-inner">V</div>
+                <!-- User Profile Dropdown instead of simple logo -->
+                <div class="relative">
+                    <button onclick="toggleDropdown()" id="profile-trigger" class="flex items-center gap-2 group focus:outline-none">
+                        <div id="app-logo" class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-xl text-white shadow-inner overflow-hidden border-2 border-transparent group-hover:border-indigo-400 transition-all">
+                            <img id="nav-pfp" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="w-full h-full object-cover hidden" alt="PFP">
+                            <span id="logo-letter">V</span>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="nav-dropdown" class="dropdown-hidden dropdown-animate absolute left-0 mt-3 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl py-2 z-50">
+                        <a href="/profile.html" class="flex items-center gap-3 px-4 py-3 hover:bg-indigo-600 text-sm font-bold transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Edit Profile
+                        </a>
+                        <div class="h-px bg-slate-700 my-1"></div>
+                        <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-600 text-sm font-bold transition text-red-400 hover:text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+
                 <div>
                     <h2 class="font-bold text-lg leading-none">Live Lobby</h2>
                     <span id="online-count-badge" class="text-xs text-green-400">0 Online</span>
@@ -64,17 +106,15 @@
                         Secrets
                     </a>
 
-                    <!-- Admin Panel Button (Visible to Owner and Developer) -->
+                    <!-- Admin Panel Button -->
                     <a id="admin-link" href="/admin" class="hidden flex items-center gap-1.5 text-xs font-bold text-red-400 hover:text-red-300 transition-colors group">
                         Admin Panel
                     </a>
 
-                    <a href="/themes" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors">
+                    <a href="/themes.html" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors">
                         Theme
                     </a>
                 </div>
-
-                <button onclick="logout()" class="text-slate-400 hover:text-white text-sm bg-slate-700/50 px-3 py-1.5 rounded-md transition border border-slate-600">Logout</button>
             </div>
         </header>
 
@@ -121,29 +161,57 @@
 
         window.onload = () => {
             const savedUser = localStorage.getItem('chat_user');
-            if (!savedUser) return window.location.href = '/login';
+            if (!savedUser) return window.location.href = '/login.html';
             
             currentUser = JSON.parse(savedUser);
             document.getElementById('display-name').innerText = currentUser.username;
+            
+            // Handle Rank Icon
             const myIcon = document.getElementById('my-rank-icon');
             myIcon.src = getRankIcon(currentUser.role);
             myIcon.classList.remove('hidden');
 
+            // Handle Profile Pic in Nav
+            const navPfp = document.getElementById('nav-pfp');
+            const logoLetter = document.getElementById('logo-letter');
+            if (currentUser.profilePic) {
+                navPfp.src = currentUser.profilePic;
+                navPfp.classList.remove('hidden');
+                logoLetter.classList.add('hidden');
+            }
+
             // Show Admin Panel for Owner and Developer
             if (currentUser.role === 'Developer' || currentUser.role === 'Owner') {
-                document.getElementById('admin-link').classList.remove('hidden');
+                const adminLink = document.getElementById('admin-link');
+                if (adminLink) adminLink.classList.remove('hidden');
             }
 
             applySavedTheme();
             startSession();
         };
 
+        function toggleDropdown() {
+            const dropdown = document.getElementById('nav-dropdown');
+            dropdown.classList.toggle('dropdown-hidden');
+            dropdown.classList.toggle('dropdown-show');
+        }
+
+        // Close dropdown when clicking outside
+        window.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('nav-dropdown');
+            const trigger = document.getElementById('profile-trigger');
+            if (trigger && !trigger.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('dropdown-hidden');
+                dropdown.classList.remove('dropdown-show');
+            }
+        });
+
         function startSession() {
             fetchMessages(true);
             fetchUsers();
             setInterval(fetchMessages, 3000);
             setInterval(fetchUsers, 5000);
-            setInterval(checkRevealRequests, 4000); // Check for reveal requests globally
+            setInterval(checkRevealRequests, 4000); 
         }
 
         async function checkRevealRequests() {
@@ -238,16 +306,18 @@
         function applySavedTheme() {
             const theme = localStorage.getItem('user_theme');
             if (theme) {
-                const { bg, header, accent } = JSON.parse(theme);
-                document.getElementById('main-body').className = `bg-${bg} text-white min-h-screen flex flex-col font-sans`;
-                document.getElementById('chat-header').style.backgroundColor = header;
-                document.getElementById('app-logo').style.backgroundColor = accent;
+                try {
+                    const { bg, header, accent } = JSON.parse(theme);
+                    document.getElementById('main-body').className = `bg-${bg} text-white min-h-screen flex flex-col font-sans`;
+                    document.getElementById('chat-header').style.backgroundColor = header;
+                    document.getElementById('app-logo').style.backgroundColor = accent;
+                } catch(e) {}
             }
         }
 
         function logout() {
             localStorage.removeItem('chat_user');
-            window.location.href = '/login';
+            window.location.href = '/login.html';
         }
     </script>
 </body>
