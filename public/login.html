@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Live Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
+        <h1 id="form-title" class="text-3xl font-bold mb-6 text-center text-indigo-400">Welcome Back</h1>
+        
+        <div class="flex mb-6 border-b border-slate-700">
+            <button onclick="switchTab('login')" id="tab-login" class="flex-1 pb-2 border-b-2 border-indigo-500 font-semibold text-white">Login</button>
+            <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition">Sign Up</button>
+        </div>
+
+        <form id="auth-form" onsubmit="handleSubmit(event)" class="space-y-4">
+            <div id="username-container">
+                <label class="block text-sm font-medium mb-1">Username</label>
+                <input type="text" id="username" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div id="email-container" class="hidden">
+                <label class="block text-sm font-medium mb-1">Email Address</label>
+                <input type="email" id="email" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">Password</label>
+                <input type="password" id="password" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition duration-200 mt-4">
+                Login
+            </button>
+            
+            <p id="error-msg" class="text-red-400 text-sm text-center mt-2 h-4"></p>
+        </form>
+    </div>
+
+    <script>
+        let mode = 'login';
+
+        // Check if user is already logged in
+        if (localStorage.getItem('chat_user')) {
+            window.location.href = '/';
+        }
+
+        function switchTab(newMode) {
+            mode = newMode;
+            const emailCont = document.getElementById('email-container');
+            const title = document.getElementById('form-title');
+            const submitBtn = document.getElementById('submit-btn');
+            const tabLogin = document.getElementById('tab-login');
+            const tabSignup = document.getElementById('tab-signup');
+            const errorMsg = document.getElementById('error-msg');
+            
+            errorMsg.innerText = "";
+
+            if (mode === 'signup') {
+                emailCont.classList.remove('hidden');
+                document.getElementById('email').required = true;
+                title.innerText = "Create Account";
+                submitBtn.innerText = "Register";
+                tabSignup.className = "flex-1 pb-2 border-b-2 border-indigo-500 font-semibold text-white";
+                tabLogin.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition";
+            } else {
+                emailCont.classList.add('hidden');
+                document.getElementById('email').required = false;
+                title.innerText = "Welcome Back";
+                submitBtn.innerText = "Login";
+                tabLogin.className = "flex-1 pb-2 border-b-2 border-indigo-500 font-semibold text-white";
+                tabSignup.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition";
+            }
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const errorMsg = document.getElementById('error-msg');
+            errorMsg.innerText = "Processing...";
+
+            const usernameValue = document.getElementById('username').value;
+            const passwordValue = document.getElementById('password').value;
+
+            const payload = {
+                username: usernameValue,
+                password: passwordValue,
+                identifier: usernameValue // Server uses identifier for login (username or email)
+            };
+
+            if (mode === 'signup') {
+                payload.email = document.getElementById('email').value;
+            }
+
+            const endpoint = mode === 'signup' ? '/api/auth/register' : '/api/auth/login';
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // Store user session info
+                    localStorage.setItem('chat_user', JSON.stringify(data.user));
+                    window.location.href = '/'; 
+                } else {
+                    errorMsg.innerText = data.message || "Authentication failed";
+                }
+            } catch (err) {
+                errorMsg.innerText = "Server connection error";
+            }
+        }
+    </script>
+</body>
+</html>
