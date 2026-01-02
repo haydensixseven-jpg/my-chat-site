@@ -41,8 +41,7 @@ const UserSchema = new mongoose.Schema({
 const MessageSchema = new mongoose.Schema({
     user: String,
     text: String,
-    time: String,
-    timestamp: { type: Date, default: Date.now }
+    timestamp: { type: Date, default: Date.now } // Store as UTC Date for local conversion
 });
 
 const User = mongoose.model('User', UserSchema);
@@ -55,9 +54,8 @@ app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
         
-        // The first user to register after a wipe gets Developer rank
-        const userCount = await User.countDocuments();
-        const role = userCount === 0 ? "Developer" : "Member";
+        // Explicit Role Assignment: "developer" is Developer, everyone else is Member
+        const role = (username.toLowerCase() === "developer") ? "Developer" : "Member";
         
         const user = new User({ 
             username, 
@@ -116,22 +114,6 @@ app.delete('/api/admin/users/:username', async (req, res) => {
 });
 
 /**
- * PUBLIC CLEAR API
- * PERMISSION REMOVED: Anyone can trigger this now.
- */
-app.post('/api/admin/clear-all', async (req, res) => {
-    try {
-        // We no longer check if the user is a Developer
-        await User.deleteMany({});
-        await Message.deleteMany({});
-
-        res.json({ success: true, message: "All data cleared successfully. System reset." });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server error during clear" });
-    }
-});
-
-/**
  * HEARTBEAT API
  */
 app.post('/api/heartbeat', async (req, res) => {
@@ -158,10 +140,13 @@ app.get('/api/messages', async (req, res) => {
 
 app.post('/api/messages', async (req, res) => {
     try {
-        const { user, text, time } = req.body;
-        const newMessage = new Message({ user, text, time });
+        const { user, text } = req.body;
+        const newMessage = new Message({ user, text });
         await newMessage.save();
+        
+        // Update user activity
         await User.updateOne({ username: user }, { lastSeen: new Date() });
+        
         res.json(newMessage);
     } catch (err) {
         res.status(500).json({ error: "Failed to broadcast message" });
