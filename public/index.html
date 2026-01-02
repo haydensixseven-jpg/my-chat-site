@@ -15,9 +15,30 @@
         body, header, aside, main, #msg-input, .bg-transition {
             transition: background-color 0.3s ease, border-color 0.3s ease;
         }
+
+        /* Notification Popup Style */
+        #reveal-popup {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(100%) translateX(-50%); opacity: 0; }
+            to { transform: translateY(0) translateX(-50%); opacity: 1; }
+        }
     </style>
 </head>
 <body id="main-body" class="bg-slate-900 text-white min-h-screen flex flex-col font-sans">
+
+    <!-- Global Reveal Notification Popup -->
+    <div id="reveal-popup" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4">
+        <div class="bg-indigo-600 border border-indigo-400 p-5 rounded-2xl shadow-2xl">
+            <h4 class="font-bold text-white mb-1">Identity Reveal Request</h4>
+            <p id="reveal-msg-text" class="text-indigo-100 text-xs mb-4"></p>
+            <div class="flex gap-2">
+                <button onclick="respondReveal(true)" class="flex-1 bg-white text-indigo-600 font-bold py-2 rounded-lg text-sm hover:bg-indigo-50 transition">Yes, Reveal</button>
+                <button onclick="respondReveal(false)" class="flex-1 bg-indigo-700 text-white font-bold py-2 rounded-lg text-sm hover:bg-indigo-800 transition">No</button>
+            </div>
+        </div>
+    </div>
 
     <!-- CHAT SECTION -->
     <div id="chat-section" class="flex flex-grow flex-col h-screen max-h-screen overflow-hidden">
@@ -31,7 +52,6 @@
             </div>
             
             <div class="flex items-center gap-3">
-                <!-- User Profile & Theme Controls -->
                 <div id="user-badge" class="hidden md:flex items-center gap-3 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700">
                     <div class="text-right">
                         <p id="display-name" class="text-sm font-bold leading-none"></p>
@@ -40,18 +60,16 @@
                     
                     <div class="h-4 w-[1px] bg-slate-700 mx-1"></div>
                     
-                    <!-- Admin Button (Hidden by default, shown via JS for Owner+) -->
-                    <a id="admin-link" href="/admin" class="hidden flex items-center gap-1.5 text-xs font-bold text-red-400 hover:text-red-300 transition-colors group">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                        </svg>
-                        Admin
+                    <a href="/secret.html" class="flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors">
+                        Secrets
                     </a>
 
-                    <a href="/themes" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors group">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                        </svg>
+                    <!-- Admin Panel Button (Visible to Owner and Developer) -->
+                    <a id="admin-link" href="/admin" class="hidden flex items-center gap-1.5 text-xs font-bold text-red-400 hover:text-red-300 transition-colors group">
+                        Admin Panel
+                    </a>
+
+                    <a href="/themes" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors">
                         Theme
                     </a>
                 </div>
@@ -89,40 +107,10 @@
         </div>
     </div>
 
-    <!-- Admin Modal (Inline management for quick actions) -->
-    <div id="admin-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
-            <h3 class="text-xl font-bold mb-2">User Management</h3>
-            <p id="target-username-display" class="text-indigo-400 font-mono mb-6 bg-slate-900 p-2 rounded"></p>
-            <div class="flex flex-col gap-3">
-                <button onclick="deleteAccount()" class="w-full bg-red-600 hover:bg-red-500 py-3 rounded-lg font-bold transition text-white">Delete Account Permanently</button>
-                <button onclick="closeAdminModal()" class="w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-lg transition text-white">Cancel</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         let currentUser = null;
-        let selectedUserForAdmin = null;
-        let lastMessageId = null;
         let activeTheme = null;
-        
-        const chatSound = new Audio('/chat.mp3');
-
-        function applySavedTheme() {
-            const savedTheme = localStorage.getItem('user_theme');
-            if (savedTheme) {
-                activeTheme = JSON.parse(savedTheme);
-                const { bg, header, accent } = activeTheme;
-
-                document.getElementById('main-body').className = `bg-${bg} text-white min-h-screen flex flex-col font-sans`;
-                document.getElementById('chat-header').className = `bg-${header} border-b border-white/10 p-4 flex justify-between items-center shadow-lg`;
-                document.getElementById('chat-sidebar').className = `hidden md:flex w-64 bg-${header}/50 border-r border-white/5 flex flex-col`;
-                document.getElementById('app-logo').className = `w-10 h-10 bg-${accent} rounded-full flex items-center justify-center font-bold text-xl text-white shadow-inner`;
-                document.getElementById('send-btn').className = `bg-${accent} hover:opacity-90 p-3 rounded-xl transition shadow-lg active:scale-95`;
-                document.getElementById('input-area-gradient').className = `absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-${bg} via-${bg} to-transparent`;
-            }
-        }
+        let currentSecretRequestId = null;
 
         function getRankIcon(role) {
             const r = role ? role.toLowerCase() : 'member';
@@ -133,48 +121,54 @@
 
         window.onload = () => {
             const savedUser = localStorage.getItem('chat_user');
-            if (!savedUser) {
-                window.location.href = '/login';
-                return;
-            }
-            currentUser = JSON.parse(savedUser);
+            if (!savedUser) return window.location.href = '/login';
             
+            currentUser = JSON.parse(savedUser);
             document.getElementById('display-name').innerText = currentUser.username;
             const myIcon = document.getElementById('my-rank-icon');
             myIcon.src = getRankIcon(currentUser.role);
             myIcon.classList.remove('hidden');
 
-            // Rank-based UI logic: Show Admin button for Owner and Developer
+            // Show Admin Panel for Owner and Developer
             if (currentUser.role === 'Developer' || currentUser.role === 'Owner') {
                 document.getElementById('admin-link').classList.remove('hidden');
             }
-            
+
             applySavedTheme();
             startSession();
         };
 
-        function logout() {
-            localStorage.removeItem('chat_user');
-            window.location.href = '/login';
-        }
-
         function startSession() {
             fetchMessages(true);
             fetchUsers();
-            setInterval(fetchMessages, 2000);
+            setInterval(fetchMessages, 3000);
             setInterval(fetchUsers, 5000);
-            sendHeartbeat();
-            setInterval(sendHeartbeat, 10000);
+            setInterval(checkRevealRequests, 4000); // Check for reveal requests globally
         }
 
-        async function sendHeartbeat() {
+        async function checkRevealRequests() {
             if (!currentUser) return;
             try {
-                await fetch('/api/heartbeat', {
+                const res = await fetch(`/api/secrets/check-requests?username=${currentUser.username}`);
+                const data = await res.json();
+                if (data.pendingRequest) {
+                    currentSecretRequestId = data.secretId;
+                    document.getElementById('reveal-msg-text').innerText = `${data.requester} wants to know who sent: "${data.message.substring(0, 30)}..."`;
+                    document.getElementById('reveal-popup').classList.remove('hidden');
+                }
+            } catch (err) {}
+        }
+
+        async function respondReveal(approved) {
+            if (!currentSecretRequestId) return;
+            try {
+                await fetch('/api/secrets/respond-reveal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: currentUser.username })
+                    body: JSON.stringify({ secretId: currentSecretRequestId, approved })
                 });
+                document.getElementById('reveal-popup').classList.add('hidden');
+                currentSecretRequestId = null;
             } catch (err) {}
         }
 
@@ -185,40 +179,20 @@
                 const container = document.getElementById('messages-container');
                 const shouldScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
 
-                if (messages.length > 0) {
-                    const latestMsg = messages[messages.length - 1];
-                    if (lastMessageId && latestMsg._id !== lastMessageId) {
-                        if (latestMsg.user !== currentUser.username) {
-                            chatSound.play().catch(() => {});
-                        }
-                    }
-                    lastMessageId = latestMsg._id;
-                }
-
-                const accentClass = activeTheme ? `bg-${activeTheme.accent}` : 'bg-indigo-600';
-                const bubbleBg = activeTheme ? 'bg-white/10' : 'bg-slate-800';
-
                 const html = messages.map(msg => {
                     const isMe = msg.user === currentUser.username;
-                    const localTime = new Date(msg.timestamp).toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    });
-
                     return `
-                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <span class="text-xs text-slate-500 mb-1 px-1">${msg.user} • ${localTime}</span>
-                            <div class="${isMe ? accentClass : bubbleBg} p-3 rounded-xl max-w-[85%] md:max-w-md shadow-md border border-white/5">
-                                <p class="text-sm whitespace-pre-wrap break-words">${escapeHtml(msg.text)}</p>
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            <span class="text-[10px] text-slate-500 mb-1 px-1">${msg.user}</span>
+                            <div class="${isMe ? 'bg-indigo-600' : 'bg-slate-800'} p-3 rounded-xl max-w-[85%] shadow-md">
+                                <p class="text-sm">${msg.text}</p>
                             </div>
                         </div>
                     `;
                 }).join('');
 
-                if (container.innerHTML !== html) {
-                    container.innerHTML = html;
-                    if (shouldScroll || isInitial) container.scrollTop = container.scrollHeight;
-                }
+                container.innerHTML = html;
+                if (shouldScroll || isInitial) container.scrollTop = container.scrollHeight;
             } catch (err) {}
         }
 
@@ -232,7 +206,7 @@
                 await fetch('/api/messages', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user: currentUser.username, text: text })
+                    body: JSON.stringify({ user: currentUser.username, text })
                 });
                 input.value = "";
                 fetchMessages();
@@ -243,63 +217,37 @@
             try {
                 const res = await fetch('/api/users');
                 const users = await res.json();
-                const onlineUsers = users.filter(u => u.isOnline);
-                const offlineUsers = users.filter(u => !u.isOnline);
-
-                document.getElementById('online-count-badge').innerText = `${onlineUsers.length} Online`;
-
-                const renderUser = (u, colorClass) => `
-                    <div onclick="handleUserClick('${u.username}')" class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition cursor-pointer group">
+                const online = users.filter(u => u.isOnline);
+                document.getElementById('online-count-badge').innerText = `${online.length} Online`;
+                
+                const render = u => `
+                    <div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg">
                         <div class="flex items-center gap-2">
-                            <div class="w-2 h-2 ${colorClass} rounded-full shadow-sm"></div>
-                            <span class="text-sm ${colorClass === 'bg-slate-600' ? 'text-slate-500' : 'text-slate-200'} font-medium">${u.username}</span>
+                            <div class="w-2 h-2 ${u.isOnline ? 'bg-green-500' : 'bg-slate-600'} rounded-full"></div>
+                            <span class="text-sm text-slate-200">${u.username}</span>
                         </div>
-                        <img src="${getRankIcon(u.role)}" alt="${u.role}" class="rank-icon opacity-80 group-hover:opacity-100 transition-opacity">
+                        <img src="${getRankIcon(u.role)}" class="rank-icon">
                     </div>
                 `;
 
-                document.getElementById('user-list-online').innerHTML = onlineUsers.map(u => renderUser(u, 'bg-green-500')).join('');
-                document.getElementById('user-list-offline').innerHTML = offlineUsers.map(u => renderUser(u, 'bg-slate-600')).join('');
-                
+                document.getElementById('user-list-online').innerHTML = online.map(render).join('');
+                document.getElementById('user-list-offline').innerHTML = users.filter(u => !u.isOnline).map(render).join('');
             } catch (err) {}
         }
 
-        function handleUserClick(targetUsername) {
-            if (currentUser.role !== 'Developer') return;
-            selectedUserForAdmin = targetUsername;
-            document.getElementById('target-username-display').innerText = `@${targetUsername}`;
-            document.getElementById('admin-modal').classList.remove('hidden');
-        }
-
-        function closeAdminModal() {
-            document.getElementById('admin-modal').classList.add('hidden');
-            selectedUserForAdmin = null;
-        }
-
-        async function deleteAccount() {
-            if (!selectedUserForAdmin || currentUser.role !== 'Developer') return;
-            if (!confirm(`Confirm deletion of ${selectedUserForAdmin}?`)) return;
-
-            try {
-                const res = await fetch(`/api/admin/users/${selectedUserForAdmin}?adminUsername=${currentUser.username}`, {
-                    method: 'DELETE'
-                });
-                const data = await res.json();
-                if (data.success) {
-                    closeAdminModal();
-                    fetchUsers();
-                } else {
-                    alert(data.message);
-                }
-            } catch (err) {
-                alert("Error.");
+        function applySavedTheme() {
+            const theme = localStorage.getItem('user_theme');
+            if (theme) {
+                const { bg, header, accent } = JSON.parse(theme);
+                document.getElementById('main-body').className = `bg-${bg} text-white min-h-screen flex flex-col font-sans`;
+                document.getElementById('chat-header').style.backgroundColor = header;
+                document.getElementById('app-logo').style.backgroundColor = accent;
             }
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function logout() {
+            localStorage.removeItem('chat_user');
+            window.location.href = '/login';
         }
     </script>
 </body>
