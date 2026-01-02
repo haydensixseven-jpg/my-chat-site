@@ -207,4 +207,21 @@ app.put('/api/admin/rank', async (req, res) => {
     }
 });
 
+// --- PAGE ROUTING ---
+app.get('/themes', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'themes.html'));
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/secret', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'secret.html'));
+});
+
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
