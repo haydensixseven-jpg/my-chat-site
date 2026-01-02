@@ -10,34 +10,51 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
         .rank-icon { width: 18px; height: 18px; object-fit: contain; }
+        
+        /* Smooth theme transitions */
+        body, header, aside, main, #msg-input, .bg-transition {
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col font-sans">
+<body id="main-body" class="bg-slate-900 text-white min-h-screen flex flex-col font-sans">
 
     <!-- CHAT SECTION -->
     <div id="chat-section" class="flex flex-grow flex-col h-screen max-h-screen overflow-hidden">
-        <header class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center shadow-lg">
+        <header id="chat-header" class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center shadow-lg">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-xl text-white shadow-inner">V</div>
+                <div id="app-logo" class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-xl text-white shadow-inner">V</div>
                 <div>
                     <h2 class="font-bold text-lg leading-none">Live Lobby</h2>
                     <span id="online-count-badge" class="text-xs text-green-400">0 Online</span>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <div id="user-badge" class="hidden md:flex items-center gap-2 text-right bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700">
-                    <div>
+            
+            <div class="flex items-center gap-3">
+                <!-- User Profile & Theme Controls -->
+                <div id="user-badge" class="hidden md:flex items-center gap-3 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <div class="text-right">
                         <p id="display-name" class="text-sm font-bold leading-none"></p>
                     </div>
                     <img id="my-rank-icon" src="" alt="Rank" class="rank-icon hidden">
+                    
+                    <div class="h-4 w-[1px] bg-slate-700 mx-1"></div>
+                    
+                    <a href="/themes.html" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors group">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                        </svg>
+                        Theme
+                    </a>
                 </div>
-                <button onclick="logout()" class="text-slate-400 hover:text-white text-sm bg-slate-700 px-3 py-1 rounded-md transition border border-slate-600">Logout</button>
+
+                <button onclick="logout()" class="text-slate-400 hover:text-white text-sm bg-slate-700/50 px-3 py-1.5 rounded-md transition border border-slate-600">Logout</button>
             </div>
         </header>
 
         <div class="flex flex-grow overflow-hidden">
             <!-- Sidebar -->
-            <aside class="hidden md:flex w-64 bg-slate-800/50 border-r border-slate-700 flex-col">
+            <aside id="chat-sidebar" class="hidden md:flex w-64 bg-slate-800/50 border-r border-slate-700 flex-col">
                 <div class="p-4 font-bold border-b border-slate-700 text-green-400 text-xs uppercase tracking-widest bg-slate-800/30">Online</div>
                 <div id="user-list-online" class="max-h-[50%] overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
                 
@@ -49,11 +66,11 @@
             <main class="flex-grow flex flex-col relative">
                 <div id="messages-container" class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-4 pb-24"></div>
 
-                <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900 via-slate-900 to-transparent">
+                <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900 via-slate-900 to-transparent" id="input-area-gradient">
                     <form onsubmit="sendMessage(event)" class="max-w-4xl mx-auto flex gap-2">
                         <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off"
                             class="flex-grow bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-white transition-all">
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl transition shadow-lg active:scale-95">
+                        <button type="submit" id="send-btn" class="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl transition shadow-lg active:scale-95">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
@@ -80,10 +97,29 @@
         let currentUser = null;
         let selectedUserForAdmin = null;
         let lastMessageId = null;
+        let activeTheme = null;
         
         const chatSound = new Audio('/chat.mp3');
 
-        // Helper to get rank icon path
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('user_theme');
+            if (savedTheme) {
+                activeTheme = JSON.parse(savedTheme);
+                const { bg, header, accent } = activeTheme;
+
+                // Apply to main structural elements
+                document.getElementById('main-body').className = `bg-${bg} text-white min-h-screen flex flex-col font-sans`;
+                document.getElementById('chat-header').className = `bg-${header} border-b border-white/10 p-4 flex justify-between items-center shadow-lg`;
+                document.getElementById('chat-sidebar').className = `hidden md:flex w-64 bg-${header}/50 border-r border-white/5 flex flex-col`;
+                document.getElementById('app-logo').className = `w-10 h-10 bg-${accent} rounded-full flex items-center justify-center font-bold text-xl text-white shadow-inner`;
+                document.getElementById('send-btn').className = `bg-${accent} hover:opacity-90 p-3 rounded-xl transition shadow-lg active:scale-95`;
+                document.getElementById('input-area-gradient').className = `absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-${bg} via-${bg} to-transparent`;
+                
+                // Update input focus ring color dynamically via style tag if needed, 
+                // but for simplicity we'll keep the indigo ring or match accent
+            }
+        }
+
         function getRankIcon(role) {
             const r = role ? role.toLowerCase() : 'member';
             if (r === 'developer') return '/developer.png';
@@ -100,11 +136,11 @@
             currentUser = JSON.parse(savedUser);
             
             document.getElementById('display-name').innerText = currentUser.username;
-            
             const myIcon = document.getElementById('my-rank-icon');
             myIcon.src = getRankIcon(currentUser.role);
             myIcon.classList.remove('hidden');
             
+            applySavedTheme();
             startSession();
         };
 
@@ -144,13 +180,14 @@
                     const latestMsg = messages[messages.length - 1];
                     if (lastMessageId && latestMsg._id !== lastMessageId) {
                         if (latestMsg.user !== currentUser.username) {
-                            chatSound.play().catch(e => {
-                                console.log("Sound autoplay blocked");
-                            });
+                            chatSound.play().catch(() => {});
                         }
                     }
                     lastMessageId = latestMsg._id;
                 }
+
+                const accentClass = activeTheme ? `bg-${activeTheme.accent}` : 'bg-indigo-600';
+                const bubbleBg = activeTheme ? 'bg-white/10' : 'bg-slate-800';
 
                 const html = messages.map(msg => {
                     const isMe = msg.user === currentUser.username;
@@ -162,7 +199,7 @@
                     return `
                         <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <span class="text-xs text-slate-500 mb-1 px-1">${msg.user} • ${localTime}</span>
-                            <div class="${isMe ? 'bg-indigo-600' : 'bg-slate-800'} p-3 rounded-xl max-w-[85%] md:max-w-md shadow-md">
+                            <div class="${isMe ? accentClass : bubbleBg} p-3 rounded-xl max-w-[85%] md:max-w-md shadow-md border border-white/5">
                                 <p class="text-sm whitespace-pre-wrap break-words">${escapeHtml(msg.text)}</p>
                             </div>
                         </div>
@@ -197,14 +234,13 @@
             try {
                 const res = await fetch('/api/users');
                 const users = await res.json();
-                
                 const onlineUsers = users.filter(u => u.isOnline);
                 const offlineUsers = users.filter(u => !u.isOnline);
 
                 document.getElementById('online-count-badge').innerText = `${onlineUsers.length} Online`;
 
                 const renderUser = (u, colorClass) => `
-                    <div onclick="handleUserClick('${u.username}')" class="flex items-center justify-between p-2 hover:bg-slate-700/50 rounded-lg transition cursor-pointer group">
+                    <div onclick="handleUserClick('${u.username}')" class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition cursor-pointer group">
                         <div class="flex items-center gap-2">
                             <div class="w-2 h-2 ${colorClass} rounded-full shadow-sm"></div>
                             <span class="text-sm ${colorClass === 'bg-slate-600' ? 'text-slate-500' : 'text-slate-200'} font-medium">${u.username}</span>
@@ -221,7 +257,6 @@
 
         function handleUserClick(targetUsername) {
             if (currentUser.role !== 'Developer') return;
-            // Prevent self-deletion if needed, or just let developers manage everyone
             selectedUserForAdmin = targetUsername;
             document.getElementById('target-username-display').innerText = `@${targetUsername}`;
             document.getElementById('admin-modal').classList.remove('hidden');
@@ -234,7 +269,7 @@
 
         async function deleteAccount() {
             if (!selectedUserForAdmin || currentUser.role !== 'Developer') return;
-            if (!confirm(`DANGER: Are you sure you want to permanently delete ${selectedUserForAdmin}? This cannot be undone.`)) return;
+            if (!confirm(`Confirm deletion of ${selectedUserForAdmin}?`)) return;
 
             try {
                 const res = await fetch(`/api/admin/users/${selectedUserForAdmin}?adminUsername=${currentUser.username}`, {
@@ -248,7 +283,7 @@
                     alert(data.message);
                 }
             } catch (err) {
-                alert("Failed to delete user.");
+                alert("Error.");
             }
         }
 
