@@ -12,8 +12,8 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
         
-        .rank-glow-Developer { box-shadow: 0 0 20px rgba(168, 85, 247, 0.3); border-color: #a855f7 !important; }
-        .rank-glow-Owner { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); border-color: #ef4444 !important; }
+        .rank-glow-Developer { box-shadow: 0 0 30px rgba(99, 102, 241, 0.2); border-color: #6366f1 !important; }
+        .rank-glow-Owner { box-shadow: 0 0 30px rgba(245, 158, 11, 0.2); border-color: #f59e0b !important; }
         
         .input-field {
             background: rgba(15, 23, 42, 0.6);
@@ -39,7 +39,7 @@
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen font-sans">
 
-    <!-- Header matching Secret Vault -->
+    <!-- Header -->
     <header class="bg-slate-900 border-b border-slate-800 p-3 flex justify-between items-center sticky top-0 z-50">
         <div class="flex items-center gap-3">
             <a href="/index.html" class="flex items-center px-4 py-1.5 hover:bg-slate-800 rounded-xl transition text-slate-400">
@@ -78,15 +78,14 @@
                     <!-- User Details -->
                     <div class="text-center md:text-left flex-1">
                         <div class="flex flex-col md:flex-row items-center gap-3 mb-2">
-                            <h2 id="display-username" class="text-3xl font-black text-white italic tracking-tight">@username</h2>
-                            <span id="display-role" class="px-3 py-1 rounded-full bg-slate-800 text-[10px] font-bold uppercase tracking-widest text-slate-400 border border-slate-700">Member</span>
+                            <h2 id="display-username" class="text-3xl font-black text-white italic tracking-tight uppercase">@username</h2>
+                            <span id="display-role" class="px-3 py-1 rounded-full bg-slate-800 text-[10px] font-black uppercase tracking-widest text-indigo-400 border border-indigo-500/30">Member</span>
                         </div>
-                        <p id="display-email" class="text-slate-500 text-sm mb-3 font-medium">user@example.com</p>
-                        <!-- Added Bio Display -->
+                        <p id="display-email" class="text-slate-500 text-xs mb-3 font-bold uppercase tracking-widest">user@example.com</p>
                         <p id="display-bio" class="text-slate-400 text-xs italic mb-4 max-w-sm line-clamp-2">No bio set.</p>
                         
                         <div class="flex gap-2 justify-center md:justify-start">
-                            <button onclick="logout()" class="px-4 py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-xs font-bold rounded-xl transition border border-red-500/20">
+                            <button onclick="logout()" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition shadow-lg shadow-red-600/20">
                                 Sign Out
                             </button>
                         </div>
@@ -95,35 +94,34 @@
             </div>
 
             <!-- Edit Form -->
-            <div class="bg-slate-900/50 border border-slate-800 rounded-3xl p-8">
-                <h3 class="text-sm font-bold text-slate-300 mb-6 uppercase tracking-widest">Update Information</h3>
-                <form onsubmit="updateProfile(event)" class="space-y-5">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8">
+                <h3 class="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-[0.2em]">Update Information</h3>
+                <form onsubmit="updateProfile(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2 ml-1">Display Username</label>
-                            <input type="text" id="edit-username" class="input-field w-full rounded-xl py-3 px-4 text-sm text-white" placeholder="New username">
+                            <input type="text" id="edit-username" class="input-field w-full rounded-2xl py-4 px-5 text-sm text-white font-bold" placeholder="New username">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2 ml-1">Email Address</label>
-                            <input type="email" id="edit-email" class="input-field w-full rounded-xl py-3 px-4 text-sm text-white" placeholder="your@email.com">
+                            <input type="email" id="edit-email" class="input-field w-full rounded-2xl py-4 px-5 text-sm text-white font-bold" placeholder="your@email.com">
                         </div>
                     </div>
                     
-                    <!-- Added Bio Input -->
                     <div>
                         <label class="block text-[10px] font-black uppercase text-slate-500 tracking-widest mb-2 ml-1">About Me (Bio)</label>
-                        <textarea id="edit-bio" rows="3" class="input-field w-full rounded-xl py-3 px-4 text-sm text-white custom-scrollbar" placeholder="Tell the vault about yourself..."></textarea>
+                        <textarea id="edit-bio" rows="3" class="input-field w-full rounded-2xl py-4 px-5 text-sm text-white font-medium custom-scrollbar" placeholder="Tell the vault about yourself..."></textarea>
                     </div>
 
                     <div class="pt-4">
-                        <button type="submit" id="save-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition shadow-lg active:scale-[0.98]">
+                        <button type="submit" id="save-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl transition shadow-lg shadow-indigo-600/20 uppercase text-xs tracking-widest active:scale-[0.98]">
                             Save Changes
                         </button>
                     </div>
                 </form>
             </div>
             
-            <p id="status-msg" class="text-center mt-6 text-xs font-bold uppercase tracking-widest text-slate-600 h-4"></p>
+            <p id="status-msg" class="text-center mt-6 text-[10px] font-black uppercase tracking-widest text-slate-600 h-4 transition-all"></p>
         </div>
     </main>
 
@@ -136,21 +134,29 @@
             currentUser = JSON.parse(savedUser);
             
             initProfile();
+            applyTheme();
         };
 
+        function applyTheme() {
+            const savedTheme = localStorage.getItem('user_theme');
+            if (savedTheme) {
+                const theme = JSON.parse(savedTheme);
+                const saveBtn = document.getElementById('save-btn');
+                saveBtn.style.backgroundColor = theme.accent;
+                saveBtn.style.boxShadow = `0 10px 15px -3px ${theme.accent}33`;
+            }
+        }
+
         function initProfile() {
-            // Update Text
             document.getElementById('display-username').innerText = `@${currentUser.username}`;
             document.getElementById('display-role').innerText = currentUser.role || 'Member';
             document.getElementById('display-email').innerText = currentUser.email || 'No email set';
             document.getElementById('display-bio').innerText = currentUser.bio || 'No bio set.';
             
-            // Set Form Values
             document.getElementById('edit-username').value = currentUser.username;
             document.getElementById('edit-email').value = currentUser.email || '';
             document.getElementById('edit-bio').value = currentUser.bio || '';
 
-            // Handle PFP Display
             const img = document.getElementById('pfp-img');
             const initial = document.getElementById('pfp-initial');
             const container = document.getElementById('pfp-display');
@@ -165,7 +171,6 @@
                 initial.innerText = currentUser.username.charAt(0).toUpperCase();
             }
 
-            // Apply Rank Glow
             document.getElementById('profile-container').classList.remove('rank-glow-Developer', 'rank-glow-Owner');
             if (currentUser.role === 'Developer' || currentUser.role === 'Owner') {
                 document.getElementById('profile-container').classList.add(`rank-glow-${currentUser.role}`);
@@ -200,7 +205,7 @@
         async function updateProfileField(updates) {
             const status = document.getElementById('status-msg');
             status.innerText = "Syncing with vault...";
-            status.className = "text-center mt-6 text-xs font-bold uppercase tracking-widest text-indigo-500";
+            status.className = "text-center mt-6 text-[10px] font-black uppercase tracking-widest text-indigo-500";
 
             try {
                 const res = await fetch('/api/users/profile', {
@@ -218,15 +223,15 @@
                     localStorage.setItem('chat_user', JSON.stringify(currentUser));
                     initProfile();
                     status.innerText = "Vault Updated Successfully";
-                    status.className = "text-center mt-6 text-xs font-bold uppercase tracking-widest text-emerald-500";
+                    status.className = "text-center mt-6 text-[10px] font-black uppercase tracking-widest text-emerald-500";
                     setTimeout(() => { status.innerText = ""; }, 3000);
                 } else {
                     status.innerText = data.message || "Update Failed";
-                    status.className = "text-center mt-6 text-xs font-bold uppercase tracking-widest text-red-500";
+                    status.className = "text-center mt-6 text-[10px] font-black uppercase tracking-widest text-red-500";
                 }
             } catch (err) {
                 status.innerText = "Connection Error";
-                status.className = "text-center mt-6 text-xs font-bold uppercase tracking-widest text-red-500";
+                status.className = "text-center mt-6 text-[10px] font-black uppercase tracking-widest text-red-500";
             }
         }
 
