@@ -69,10 +69,7 @@
                     <span id="active-count" class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">0</span>
                 </div>
                 <div id="user-list" class="space-y-2 overflow-y-auto custom-scrollbar pr-2">
-                    <div class="animate-pulse flex items-center gap-3 p-2">
-                        <div class="w-8 h-8 rounded-lg bg-slate-800"></div>
-                        <div class="h-2 w-20 bg-slate-800 rounded"></div>
-                    </div>
+                    <!-- Users injected here via fetchRealUsers -->
                 </div>
             </div>
         </aside>
@@ -87,7 +84,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                         </div>
-                        <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">End-to-End Encrypted Session</p>
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">Global Secure Channel</p>
                     </div>
                 </div>
             </div>
@@ -111,6 +108,7 @@
     <script>
         let currentUser = null;
         let usersUpdateInterval = null;
+        let heartbeatInterval = null;
 
         window.onload = () => {
             const savedUser = localStorage.getItem('chat_user');
@@ -123,15 +121,37 @@
             checkAdminStatus();
             applyTheme();
             
-            // Initial load and set interval for real-time user list
+            // Start User Sync
             fetchRealUsers();
-            usersUpdateInterval = setInterval(fetchRealUsers, 5000);
+            usersUpdateInterval = setInterval(fetchRealUsers, 3000); // Faster refresh for "live" feel
+
+            // Start Online Presence Heartbeat
+            sendHeartbeat(); 
+            heartbeatInterval = setInterval(sendHeartbeat, 10000); // Tell server we are still here every 10s
         };
 
-        // Clean up on leave
-        window.onunload = () => {
+        // Clean up intervals when leaving
+        window.addEventListener('beforeunload', () => {
             if (usersUpdateInterval) clearInterval(usersUpdateInterval);
-        };
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+        });
+
+        async function sendHeartbeat() {
+            if (!currentUser) return;
+            try {
+                // We use the login endpoint or a dedicated status endpoint to update 'isOnline' and 'lastActive'
+                await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        identifier: currentUser.username, 
+                        password: currentUser.password // Note: In real apps use tokens, not stored passwords
+                    })
+                });
+            } catch (err) {
+                console.error("Heartbeat failed");
+            }
+        }
 
         function checkAdminStatus() {
             if (currentUser.role === 'Developer' || currentUser.role === 'Owner') {
@@ -151,9 +171,7 @@
                     el.style.boxShadow = `0 10px 15px -3px ${theme.accent}33`;
                 });
                 
-                if (navLogo) {
-                    navLogo.style.backgroundColor = theme.accent;
-                }
+                if (navLogo) navLogo.style.backgroundColor = theme.accent;
                 
                 const input = document.getElementById('message-input');
                 input.onfocus = () => input.style.borderColor = theme.accent;
@@ -166,41 +184,40 @@
                 const res = await fetch('/api/users');
                 const users = await res.json();
                 
-                // Sort users: Online first, then by username
-                users.sort((a, b) => {
-                    if (a.isOnline === b.isOnline) return a.username.localeCompare(b.username);
-                    return a.isOnline ? -1 : 1;
-                });
-
                 const list = document.getElementById('user-list');
                 const countDisplay = document.getElementById('active-count');
                 
-                countDisplay.innerText = users.filter(u => u.isOnline).length;
+                // Show only people online in the count
+                const onlineUsers = users.filter(u => u.isOnline);
+                countDisplay.innerText = onlineUsers.length;
                 
+                // Render list (Online first)
+                users.sort((a, b) => (a.isOnline === b.isOnline) ? 0 : a.isOnline ? -1 : 1);
+
                 list.innerHTML = users.map(u => {
                     const isSelf = u.username === currentUser.username;
-                    const onlineColor = u.isOnline ? 'bg-emerald-500' : 'bg-slate-700';
-                    const borderOpacity = u.isOnline ? 'border-indigo-500/30' : 'border-slate-800';
+                    const onlineStatus = u.isOnline ? 'bg-emerald-500' : 'bg-slate-700';
+                    const opacity = u.isOnline ? 'opacity-100' : 'opacity-40';
                     
                     return `
-                        <div class="flex items-center gap-3 p-2 hover:bg-slate-800/50 rounded-xl transition cursor-pointer group border ${borderOpacity}">
+                        <div class="flex items-center gap-3 p-2 hover:bg-slate-800/50 rounded-xl transition cursor-pointer group border border-transparent ${opacity}">
                             <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover:border-indigo-500/50 relative">
                                 ${u.username[0].toUpperCase()}
                                 ${isSelf ? '<div class="absolute -top-1 -right-1 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></div>' : ''}
                             </div>
                             <div class="flex flex-col">
-                                <span class="text-xs font-medium ${u.isOnline ? 'text-slate-200' : 'text-slate-500'} group-hover:text-white flex items-center gap-1">
+                                <span class="text-xs font-medium text-slate-200 group-hover:text-white flex items-center gap-1">
                                     ${u.username}
                                     ${isSelf ? '<span class="text-[8px] opacity-50">(You)</span>' : ''}
                                 </span>
-                                <span class="text-[8px] uppercase tracking-tighter text-slate-600 font-bold">${u.role}</span>
+                                <span class="text-[8px] uppercase tracking-tighter text-slate-500 font-bold">${u.role}</span>
                             </div>
-                            <div class="ml-auto w-1.5 h-1.5 rounded-full ${onlineColor}"></div>
+                            <div class="ml-auto w-1.5 h-1.5 rounded-full ${onlineStatus}"></div>
                         </div>
                     `;
                 }).join('');
             } catch (err) {
-                console.error("Failed to update user list:", err);
+                console.warn("User sync error");
             }
         }
 
