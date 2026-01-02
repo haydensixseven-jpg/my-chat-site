@@ -40,7 +40,15 @@
                     
                     <div class="h-4 w-[1px] bg-slate-700 mx-1"></div>
                     
-                    <a href="/themes.html" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors group">
+                    <!-- Admin Button (Hidden by default, shown via JS for Owner+) -->
+                    <a id="admin-link" href="/admin" class="hidden flex items-center gap-1.5 text-xs font-bold text-red-400 hover:text-red-300 transition-colors group">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                        Admin
+                    </a>
+
+                    <a href="/themes" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors group">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                         </svg>
@@ -81,7 +89,7 @@
         </div>
     </div>
 
-    <!-- Admin Modal -->
+    <!-- Admin Modal (Inline management for quick actions) -->
     <div id="admin-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
         <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
             <h3 class="text-xl font-bold mb-2">User Management</h3>
@@ -107,16 +115,12 @@
                 activeTheme = JSON.parse(savedTheme);
                 const { bg, header, accent } = activeTheme;
 
-                // Apply to main structural elements
                 document.getElementById('main-body').className = `bg-${bg} text-white min-h-screen flex flex-col font-sans`;
                 document.getElementById('chat-header').className = `bg-${header} border-b border-white/10 p-4 flex justify-between items-center shadow-lg`;
                 document.getElementById('chat-sidebar').className = `hidden md:flex w-64 bg-${header}/50 border-r border-white/5 flex flex-col`;
                 document.getElementById('app-logo').className = `w-10 h-10 bg-${accent} rounded-full flex items-center justify-center font-bold text-xl text-white shadow-inner`;
                 document.getElementById('send-btn').className = `bg-${accent} hover:opacity-90 p-3 rounded-xl transition shadow-lg active:scale-95`;
                 document.getElementById('input-area-gradient').className = `absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-${bg} via-${bg} to-transparent`;
-                
-                // Update input focus ring color dynamically via style tag if needed, 
-                // but for simplicity we'll keep the indigo ring or match accent
             }
         }
 
@@ -139,6 +143,11 @@
             const myIcon = document.getElementById('my-rank-icon');
             myIcon.src = getRankIcon(currentUser.role);
             myIcon.classList.remove('hidden');
+
+            // Rank-based UI logic: Show Admin button for Owner and Developer
+            if (currentUser.role === 'Developer' || currentUser.role === 'Owner') {
+                document.getElementById('admin-link').classList.remove('hidden');
+            }
             
             applySavedTheme();
             startSession();
