@@ -2,274 +2,151 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(express.json());
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increased limit for profile picture base64 strings
 app.use(express.static('public'));
 
 // MongoDB Connection
-const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/live-chat';
-mongoose.connect(mongoURI)
+// Note: In a production environment, use process.env.MONGO_URI
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/chat-app';
+mongoose.connect(MONGO_URI)
     .then(() => console.log('Connected to MongoDB'))
-    .catch(err => console.error('MongoDB connection error:', err));
+    .catch(err => console.error('Could not connect to MongoDB', err));
 
-// --- Database Schemas ---
-
+// User Schema
 const userSchema = new mongoose.Schema({
-    username: { type: String, unique: true, required: true },
-    email: { type: String, unique: true, required: true },
+    username: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, default: 'Member' }, // Roles: Member, Owner, Developer
-    profilePic: { type: String, default: null },
-    bio: { type: String, default: '' },
-    lastSeen: { type: Date, default: Date.now }
-});
-
-const messageSchema = new mongoose.Schema({
-    user: String,
-    text: String,
-    timestamp: { type: Date, default: Date.now }
-});
-
-const secretSchema = new mongoose.Schema({
-    sender: { type: String, required: true },
-    recipient: { type: String, required: true },
-    message: { type: String, required: true },
-    timestamp: { type: Date, default: Date.now },
-    revealed: { type: Boolean, default: false },
-    revealRequestPending: { type: Boolean, default: false }
+    role: { type: String, default: 'Member', enum: ['Member', 'Owner', 'Developer'] },
+    isOnline: { type: Boolean, default: false },
+    lastActive: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);
-const Message = mongoose.model('Message', messageSchema);
-const Secret = mongoose.model('Secret', secretSchema);
 
-// --- AUTHENTICATION ROUTES ---
+// --- Auth Routes ---
 
+// Register
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        const userCount = await User.countDocuments();
-        const role = userCount === 0 ? 'Developer' : 'Member';
-        const newUser = new User({ username, email, password, role });
+        
+        // Check if user exists
+        const existing = await User.findOne({ $or: [{ username }, { email }] });
+        if (existing) {
+            return res.status(400).json({ success: false, message: 'Username or Email already taken' });
+        }
+
+        // Simple password storage (use bcrypt in production!)
+        const newUser = new User({ username, email, password, isOnline: true });
         await newUser.save();
-        res.json({ success: true, user: { username, role, email, bio: '' } });
+
+        res.json({ 
+            success: true, 
+            user: { username: newUser.username, role: newUser.role, email: newUser.email } 
+        });
     } catch (err) {
-        res.status(400).json({ success: false, message: "Username or Email already exists" });
+        res.status(500).json({ success: false, message: 'Server error during registration' });
     }
 });
 
+// Login
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { identifier, password } = req.body;
+        const { identifier, password } = req.body; // identifier can be username or email
+        
         const user = await User.findOne({ 
             $or: [{ username: identifier }, { email: identifier }],
             password: password 
         });
-        if (user) {
-            user.lastSeen = new Date();
-            await user.save();
-            res.json({ 
-                success: true, 
-                user: { 
-                    username: user.username, 
-                    role: user.role, 
-                    profilePic: user.profilePic,
-                    email: user.email,
-                    bio: user.bio
-                } 
-            });
-        } else {
-            res.status(401).json({ success: false, message: "Invalid credentials" });
+
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-    } catch (err) {
-        res.status(500).json({ success: false, message: "Server error" });
-    }
-});
 
-// Update profile (Unified endpoint used by profile.html)
-app.put('/api/users/profile', async (req, res) => {
-    try {
-        const { currentUsername, username, email, bio, profilePic } = req.body;
-        
-        // Find user by their current session username
-        const user = await User.findOne({ username: currentUsername });
-        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-        // Apply updates if they exist in the request
-        if (username) user.username = username;
-        if (email) user.email = email;
-        if (bio !== undefined) user.bio = bio;
-        if (profilePic) user.profilePic = profilePic;
-
+        user.isOnline = true;
+        user.lastActive = Date.now();
         await user.save();
-        
+
         res.json({ 
             success: true, 
-            user: { 
-                username: user.username, 
-                profilePic: user.profilePic, 
-                role: user.role,
-                email: user.email,
-                bio: user.bio
-            } 
+            user: { username: user.username, role: user.role, email: user.email } 
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: "Update conflict or server error" });
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
 });
 
-// Legacy PFP Update endpoint (kept for compatibility if needed)
-app.post('/api/profile/update', async (req, res) => {
-    try {
-        const { username, profilePic } = req.body;
-        const user = await User.findOneAndUpdate(
-            { username }, 
-            { profilePic }, 
-            { new: true }
-        );
-        if (user) {
-            res.json({ success: true, user: { username: user.username, profilePic: user.profilePic, role: user.role } });
-        } else {
-            res.status(404).json({ error: 'User not found' });
-        }
-    } catch (err) {
-        res.status(500).json({ success: false });
-    }
-});
+// --- User Management Routes ---
 
-// --- SECRET MESSAGING ROUTES ---
-
-app.post('/api/secrets', async (req, res) => {
-    try {
-        const { sender, recipient, message } = req.body;
-        const target = await User.findOne({ username: recipient });
-        if (!target) return res.status(404).json({ success: false, message: "Recipient not found." });
-
-        const newSecret = new Secret({ sender, recipient, message });
-        await newSecret.save();
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false });
-    }
-});
-
-app.get('/api/secrets/inbox', async (req, res) => {
-    try {
-        const { username } = req.query;
-        const secrets = await Secret.find({ recipient: username }).sort({ timestamp: -1 });
-        res.json(secrets);
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.post('/api/secrets/reveal-request', async (req, res) => {
-    try {
-        const { secretId } = req.body;
-        await Secret.findByIdAndUpdate(secretId, { revealRequestPending: true });
-        res.json({ success: true, message: "Reveal request sent to sender." });
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.get('/api/secrets/check-requests', async (req, res) => {
-    try {
-        const { username } = req.query;
-        const pending = await Secret.findOne({ sender: username, revealRequestPending: true, revealed: false });
-        if (pending) {
-            res.json({ 
-                pendingRequest: true, 
-                secretId: pending._id, 
-                requester: pending.recipient, 
-                message: pending.message 
-            });
-        } else {
-            res.json({ pendingRequest: false });
-        }
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.post('/api/secrets/respond-reveal', async (req, res) => {
-    try {
-        const { secretId, approved } = req.body;
-        if (approved) {
-            await Secret.findByIdAndUpdate(secretId, { revealed: true, revealRequestPending: false });
-        } else {
-            await Secret.findByIdAndUpdate(secretId, { revealRequestPending: false });
-        }
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-// --- CHAT & USER STATUS ROUTES ---
-
-app.get('/api/messages', async (req, res) => {
-    try {
-        const messages = await Message.find().sort({ timestamp: 1 }).limit(100);
-        res.json(messages);
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.post('/api/messages', async (req, res) => {
-    try {
-        const newMessage = new Message(req.body);
-        await newMessage.save();
-        res.status(201).json(newMessage);
-    } catch (err) {
-        res.status(400).send(err);
-    }
-});
-
+// Get all users for the sidebar & admin panel
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await User.find({}, 'username role lastSeen profilePic bio');
-        const now = Date.now();
-        const statusUsers = users.map(u => ({
-            username: u.username,
-            role: u.role,
-            profilePic: u.profilePic,
-            bio: u.bio,
-            isOnline: (now - new Date(u.lastSeen).getTime()) < 30000
-        }));
-        res.json(statusUsers);
+        // In a real app, we might filter isOnline recently or use WebSockets
+        const users = await User.find({}, 'username role isOnline');
+        res.json(users);
     } catch (err) {
-        res.status(500).send(err);
+        res.status(500).json({ success: false, message: 'Error fetching users' });
     }
 });
 
+// Update Rank (Admin Only)
 app.put('/api/admin/rank', async (req, res) => {
     try {
         const { adminUsername, targetUsername, newRole } = req.body;
+
+        // Verify admin
         const admin = await User.findOne({ username: adminUsername });
         if (!admin || (admin.role !== 'Developer' && admin.role !== 'Owner')) {
-            return res.status(403).json({ success: false, message: "Unauthorized" });
+            return res.status(403).json({ success: false, message: 'Insufficient permissions' });
         }
-        const target = await User.findOneAndUpdate({ username: targetUsername }, { role: newRole }, { new: true });
-        res.json({ success: true, user: { username: target.username, role: target.role } });
+
+        const target = await User.findOneAndUpdate(
+            { username: targetUsername },
+            { role: newRole },
+            { new: true }
+        );
+
+        if (!target) return res.status(404).json({ success: false, message: 'User not found' });
+
+        res.json({ success: true, message: `Rank updated for ${targetUsername}` });
     } catch (err) {
-        res.status(500).json({ success: false });
+        res.status(500).json({ success: false, message: 'Server error updating rank' });
     }
 });
 
-// --- PAGE ROUTING ---
-app.get('/themes', (req, res) => res.sendFile(path.join(__dirname, 'public', 'themes.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/secret', (req, res) => res.sendFile(path.join(__dirname, 'public', 'secret.html')));
-app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
+// Delete User (Admin Only)
+app.delete('/api/admin/users/:username', async (req, res) => {
+    try {
+        const { adminUsername } = req.query;
+        const targetUsername = req.params.username;
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+        const admin = await User.findOne({ username: adminUsername });
+        if (!admin || (admin.role !== 'Developer' && admin.role !== 'Owner')) {
+            return res.status(403).json({ success: false, message: 'Insufficient permissions' });
+        }
+
+        await User.findOneAndDelete({ username: targetUsername });
+        res.json({ success: true, message: 'User deleted' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error deleting user' });
+    }
+});
+
+// Serving the app
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
